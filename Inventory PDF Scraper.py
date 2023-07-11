@@ -4,21 +4,27 @@ from openpyxl import Workbook
 from openpyxl.utils import get_column_letter
 
 
-print("current path:")
-print(os.getcwd())
-# os.chdir(input("Where are the inventory files stored?"))
-os.chdir(r"C:\Users\Mason\Documents\NAMSA Test\Inventory")
-print("path should be changed:")
-print(os.getcwd())
 
 #special case list 1 and 2 form the bulk of the cases where smart_splitter() should add the read_ahead to a given phrase
 special_case_list1 = ["o", "h", "%"]
 
 special_case_list2 = ["pe", "ys"]
 
+
+#changes the directory to where inventory pdfs are stored
+def directory_changer():
+    print("current path:")
+    print(os.getcwd())
+    # os.chdir(input("Where are the inventory files stored?"))
+    os.chdir(r"C:\Users\Mason\Documents\NAMSA Test\Inventory")
+    print("path should be changed:")
+    print(os.getcwd())
+
+
 #helper function for smart_splitter() that gives it the read_ahead to add to phrase to make conjoined_phrase. This allows for Excel cells to have meaningful 'categories' in cells as opposed to the raw data all being in separate cells, which would ruin formatting
 def read_ahead(list, r_i, read=None):
     read = ""
+
     #r_i is used in place of i because it needs to progress through the list of scraped data independently from it
     r_i += 1
 
@@ -42,7 +48,7 @@ def read_ahead(list, r_i, read=None):
                 or len(read) > 4
                 and read[-5] == "s"
 
-                #adds Saline P80 to the list of special cases, since having '80' be a special case would case issues
+                #adds Saline P80 to the list of special cases, since having '80' be a special case would cause issues
                 or len(read) == 3
                 and read == "P80"
                 or (len(read) == 3 and read[-1] == ")")
@@ -66,6 +72,7 @@ def read_ahead(list, r_i, read=None):
                 
     #this might not have to be written explicitly
     return None
+
 
 
 #each pdf that is scraped is a list containing each line of the pdf, which is also a list, hence the input parameter
@@ -122,6 +129,8 @@ def smart_splitter(list_of_lists):
 #will add every media type to each pdf's Excel representation, even if none were recorded for the date. Takes from the data processed by smart_splitter(). Only adds 1000 FTM and DFD because too much more would vastly overcomplicate this. These are the only types that are missing in 2023
 def data_formatter(data_list):
     
+    #debug tool
+    check_against_formatted_list = data_list.copy()
     #a shallow copy was needed to prevent the loop running indefinitely
     formatted_list = data_list.copy()
 
@@ -129,13 +138,13 @@ def data_formatter(data_list):
     doc_num = 0
 
     for pdf_data in data_list:
-        doc_num += 1
 
         #knowing where 1000 FTM and 1000 DFD should be on an ideally formatted pdf is what is used to reference where they should be added. Sublist_count tracks what line of the pdf we should add to on the Excel representation
         sublist_count = 0
 
         FTM_1000_Needed = False
         DFD_1000_Needed = False
+        REMOVE_OD = False
 
         #pdf_data is indexed at [1] because [0] contains the filename, while [1] is a list of each line, which is also a list of all the functional phrases
         for sub_list in pdf_data[1]:
@@ -150,6 +159,8 @@ def data_formatter(data_list):
                     FTM_1000_Needed = True
                     print("FTM1000 needed for " + str(pdf_data[0]))
                     sublist_count += 1
+
+            #add FTM 600, since apparently some are missing it like 01-20-23 :( WAIT
             
             #adds 1000 DFD
             elif sublist_count == 27:
@@ -160,165 +171,214 @@ def data_formatter(data_list):
                     DFD_1000_Needed = True
                     print("DFD1000 needed for " + str(pdf_data[0]))
                     sublist_count += 1
-
-
-        formatted_list.append(pdf_data)
+            
+            #the large degree of ambiguity on the sublist_count comes from the fact that with FTM1000 or DFD1000 the end of the PDF could come at different times. Some of this ambiguity could be needed in the DFD1000 check...
+            elif sublist_count == 32 or sublist_count == 33 or sublist_count == 34:
+                if sub_list[0] == "OD=":
+                    REMOVE_OD = True
+        
 
         #runs after all the other data has been added, so that the .insert() method knows where to add 1000 FTM and 1000 DFD based on where they would be in an ideally formatted pdf
         #the final value added, "", indicates that no media for this media type was recorded on this date
         if FTM_1000_Needed:
+            #experiment with removing different indices, or maybe saving which exact indice to add to specific to each unique case instead of hard-coding it
             formatted_list[doc_num][1].insert(12, ["1000", "17-20/lot", "36", "90 (5)", ""])
 
         if DFD_1000_Needed:
-
             formatted_list[doc_num][1].insert(25, ["DFD","1000", "34 bottles/lot", "99", "136", ""])
+
+        if REMOVE_OD:
+            formatted_list[doc_num][1].pop(-1)
+
+        #THIS USED TO BE AT THE START OF THE FUNCTION THIS IS A TEST
+        doc_num += 1
+
+    #yes it breaks at this point
+    print("is it broken here")
 
     return formatted_list
 
-#this should be put in a function
-all_data = []
-pdf_count = 0
-
-#looks for pdfs in the current directory given to find media inventory pdfs
-for filename in os.listdir(os.getcwd()):
-    if filename[-4:] == ".pdf":
-        pdf_count += 1
-
-        #uses imported functions from PyPDF2 to read from pdfs
-        reader = PdfReader(open(filename, "rb"))
-
-        #this can be removed in the final version
-        info = reader.metadata
-
-        #this is the raw line by line data scraped from each pdf as a list containing each line, which is also a list
-        unformatted_data = []
-
-        #every media pdf should be one page long, this could cause issues should that requirement not be met. (UPDATE)
-        for i in range(0, len(reader.pages)):
-            selected_page = reader.pages[i]
-
-            text = selected_page.extract_text()
-
-            unformatted_data += text.splitlines()
-
-        #data that is split into functional phrases without 1000 FTM and 1000 DFD added to the Excel pdf representation
-        spaced_data = smart_splitter(unformatted_data)
-
-        all_data.append([[filename], spaced_data])
 
 
-formatted_data = data_formatter(all_data)
+def data_scraper():
+    all_data = []
+    pdf_count = 0
+
+    #looks for pdfs in the current directory given to find media inventory pdfs
+    for filename in os.listdir(os.getcwd()):
+        if filename[-4:] == ".pdf":
+            pdf_count += 1
+
+            #uses imported functions from PyPDF2 to read from pdfs
+            reader = PdfReader(open(filename, "rb"))
+
+            #this can be removed in the final version
+            info = reader.metadata
+
+            #this is the raw line by line data scraped from each pdf as a list containing each line, which is also a list
+            unformatted_data = []
+
+            #every media pdf should be one page long, this could cause issues should that requirement not be met. (UPDATE)
+            for i in range(0, len(reader.pages)):
+                selected_page = reader.pages[i]
+
+                text = selected_page.extract_text()
+
+                unformatted_data += text.splitlines()
+
+            #data that is split into functional phrases without 1000 FTM and 1000 DFD added to the Excel pdf representation
+            spaced_data = smart_splitter(unformatted_data)
+
+            all_data.append([[filename], spaced_data])
+
+    print("is it broken this early?")
 
 
-# makes the excel workbook
-wb = Workbook()
-
-#sets the relevant sheet of the Excel document that will be edited
-ws = wb.active
-
-#gives the name for the resulting saved Excel file
-ws.title = "Inventory Analytics.xlsx"
-
-#this sheet stores the graphs made from the pdf data
-wb.create_sheet("Graphs")
+    return data_formatter(all_data), pdf_count
 
 
-#BELOW THIS SHOULD BE MADE NOT DISPICABLE
-row_offset = 1
 
-temp = 2
+def excel_wb_maker():
 
-for data_list in all_data:
-    row_count = 1
+    # makes the excel workbook
+    wb = Workbook()
 
-    for row in data_list[1]:
-        # adds to the rows without SCDB, FTM, etc.
-        if len(row) < 6:
-            row.insert(0, "")
+    #sets the relevant sheet of the Excel document that will be edited
+    ws = wb.active
 
-        #EXPERIMENTAL CODE TO REMOVE THE OD STUFF SEE 781 ON EXCEL
-            if len(row) > 6:
-                row.pop(-1)
+    #gives the name for the resulting saved Excel file
+    ws.title = "Inventory Analytics.xlsx"
 
-        col_count = 1
+    #this sheet stores the graphs made from the pdf data
+    wb.create_sheet("Graphs")
 
-        for cell_data in row:
-            char = get_column_letter(col_count)
-            col_count += 1
+    return wb, ws
 
-            ws[char + str(row_count + row_offset)] = cell_data
-
-        row_count += 1
-
-    row_offset += row_count + 2
-
-    ws["A" + str(row_offset - 33)] = data_list[0][0]
-
-    ws[get_column_letter(temp + 6) + "2"] = data_list[0][0][:8]
-
-    temp += 1
+#update / make large changes to what's below this
 
 
-# makes the relevant data cell of the resulting Excel document
-#media_type_list = []
 
-for i in range(3, 11):
-    ws["H" + str(i)] = ws["A3"].value + " " + ws["B" + str(i)].value
+def excel_pdf_paster(formatted_data, ws):
+    #allows the rows to be placed where they need to be, and allows for space in between pasted pdfs in Excel
+    pdf_offset = 1
 
-    #something something is not subscriptable... (FIX)
-    #media_type_list.append[ws["H" + str(i)].value]
+    #moves the dates where each pdf's data is collected to start at 'I2' and continue rightward
+    date_offset = 9
 
-for i in range(11, 19):
-    ws["H" + str(i)] = ws["A11"].value + " " + ws["B" + str(i)].value
-    
-    (FIX)
-    #media_type_list.append[ws["H" + str(i)].value]
+    #iterates through every pdf in formatted_data
+    for data_list in formatted_data:
+        row_count = 1
 
-for i in range(19, 33):
-    ws["H" + str(i)] = ws["A" + str(i)].value + " " + ws["B" + str(i)].value
-    
-    (FIX)
-    #media_type_list.append[ws["H" + str(i)].value]
+        for row in data_list[1]:
+            #adds to the rows in Excel without SCDB, FTM, etc.
+            if len(row) < 6:
+                row.insert(0, "")
 
+            col_count = 1
 
-#old implementation (UPDATE)
-amogus = 3
-data_offset = 0
+            for cell_data in row:
+                #gives the column letter and advances it forward for the next cell in a pdf's given row
+                char = get_column_letter(col_count)
+                col_count += 1
 
+                #this line is for debug purposes, but the one below it takes the data from a row on the formatted pdf data and puts it in Excel.
+                data_cell = char + str(row_count + pdf_offset)
+                ws[data_cell] = cell_data
 
-for col in range(9, pdf_count + 9):
-    col_char = get_column_letter(col)
+            row_count += 1
 
-    #try (3, 32)
-    for row in range(3, 32):
+        pdf_offset += row_count + 2
 
-        print("worked " + str(amogus))
-        amogus += 1
+        #adds the filename above each pdf's pasted data. title_cell and date_cell are used for debugging
+        title_cell = "A" + str(pdf_offset - 34)
+        ws[title_cell] = data_list[0][0]
 
-        print("row " + str(row))
+        date_cell = get_column_letter(date_offset) + "2"
+        ws[date_cell] = data_list[0][0][:8]
 
-        print("data_offset + row " + str(data_offset + row))
-
-        cell_recieve = col_char + str(row)
-
-        cell_give = "F" + str(data_offset + row)
-
-        #conditions for ignoring weirdly formatted cells
-        if ws[cell_give].value == "OD":
-            print("code run!")
+        if date_cell == "CA":
             continue
 
-        elif ws[cell_give].value == None:
-            continue
+        date_offset += 1
 
-        else:
-            try:
-                ws[cell_recieve] = int(ws[cell_give].value)
-            except:
 
-                ws[cell_recieve] = ws[cell_give].value
-    
-    data_offset += 33 + 3
-    amogus = data_offset
 
-wb.save(ws.title)
+def excel_media_type_adder(ws):
+
+    # makes the relevant data cell of the resulting Excel document
+    #media_type_list = []
+
+    for i in range(3, 11):
+        ws["H" + str(i)] = ws["A3"].value + " " + ws["B" + str(i)].value
+
+        #something something is not subscriptable... (FIX)
+        #media_type_list.append[ws["H" + str(i)].value]
+
+    for i in range(11, 19):
+        ws["H" + str(i)] = ws["A11"].value + " " + ws["B" + str(i)].value
+        
+        #(FIX)
+        #media_type_list.append[ws["H" + str(i)].value]
+
+    for i in range(19, 33):
+        ws["H" + str(i)] = ws["A" + str(i)].value + " " + ws["B" + str(i)].value
+        
+        #(FIX)
+        #media_type_list.append[ws["H" + str(i)].value]
+
+
+
+def excel_data_mover(ws, pdf_count):
+
+    #old implementation (UPDATE)
+    amogus = 3
+    data_offset = 0
+
+    for col in range(9, pdf_count + 9):
+        col_char = get_column_letter(col)
+
+        #try (3, 32)
+        for row in range(3, 33):
+
+            amogus += 1
+
+            cell_recieve = col_char + str(row)
+
+            cell_give = "F" + str(data_offset + row)
+
+            #conditions for ignoring weirdly formatted cells
+            if ws[cell_give].value == "OD":
+                print("code run!")
+                continue
+
+            elif ws[cell_give].value == None:
+                continue
+
+            else:
+                try:
+                    ws[cell_recieve] = int(ws[cell_give].value)
+
+                except:
+                    ws[cell_recieve] = ws[cell_give].value
+        
+        data_offset += 34
+        amogus = data_offset
+
+
+
+def run_program():
+    directory_changer()
+
+    #formatted_data is twice the length it should be (FIX)
+    formatted_data, pdf_count = data_scraper()
+
+    workbook, worksheet = excel_wb_maker()
+
+    #maybe reduce what's below this to a macro function
+    excel_pdf_paster(formatted_data, worksheet)
+    excel_media_type_adder(worksheet)
+    excel_data_mover(worksheet, pdf_count)
+
+    workbook.save(worksheet.title)
+
+run_program()
