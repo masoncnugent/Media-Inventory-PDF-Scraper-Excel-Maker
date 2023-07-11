@@ -236,6 +236,10 @@ for data_list in all_data:
         if len(row) < 6:
             row.insert(0, "")
 
+        #EXPERIMENTAL CODE TO REMOVE THE OD STUFF SEE 781 ON EXCEL
+            if len(row) > 6:
+                row.pop(-1)
+
         col_count = 1
 
         for cell_data in row:
@@ -285,7 +289,7 @@ data_offset = 0
 for col in range(9, pdf_count + 9):
     col_char = get_column_letter(col)
 
-
+    #try (3, 32)
     for row in range(3, 32):
 
         print("worked " + str(amogus))
