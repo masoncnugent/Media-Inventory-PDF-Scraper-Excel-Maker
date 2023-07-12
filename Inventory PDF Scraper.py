@@ -2,6 +2,7 @@ from PyPDF2 import PdfReader
 import os
 from openpyxl import Workbook
 from openpyxl.utils import get_column_letter
+from openpyxl import LineChart, Reference
 
 
 
@@ -141,7 +142,9 @@ def data_formatter(data_list):
 
         #knowing where 1000 FTM and 1000 DFD should be on an ideally formatted pdf is what is used to reference where they should be added. Sublist_count tracks what line of the pdf we should add to on the Excel representation
         sublist_count = 0
+        sublist_mod = 0
 
+        FTM_400S_Needed = False
         FTM_1000_Needed = False
         DFD_1000_Needed = False
         REMOVE_OD = False
@@ -150,39 +153,55 @@ def data_formatter(data_list):
         for sub_list in pdf_data[1]:
             sublist_count += 1
 
-            #adds 1000 FTM
-            if sublist_count == 14:
+            #adds 400-S FTM
+            if sublist_count == 12 - sublist_mod:
+                if sub_list[0] == "400-S":
+                    sublist_count += 1
+                
+                else:
+                    FTM_400S_Needed = True
+                    sublist_count += 1
+                    sublist_mod += 1
+
+
+            elif sublist_count == 15 - sublist_mod:
                 if sub_list[0] == "1000":
                     sublist_count += 1
                     
                 else:
                     FTM_1000_Needed = True
-                    print("FTM1000 needed for " + str(pdf_data[0]))
                     sublist_count += 1
+                    sublist_mod += 1
 
-            #add FTM 600, since apparently some are missing it like 01-20-23 :( WAIT
+
             
             #adds 1000 DFD
-            elif sublist_count == 27:
-                if sub_list[4] == "136":
+            #was 27
+            elif sublist_count == 28 - sublist_mod:
+                #the or condition is given because the minimum for DFD was changed on 06/26/23 from 136 to 99
+                if sub_list[3] == "136" or sub_list[3] == "99":
                     sublist_count += 1
 
                 else:
                     DFD_1000_Needed = True
-                    print("DFD1000 needed for " + str(pdf_data[0]))
                     sublist_count += 1
+                    sublist_mod == 1
             
             #the large degree of ambiguity on the sublist_count comes from the fact that with FTM1000 or DFD1000 the end of the PDF could come at different times. Some of this ambiguity could be needed in the DFD1000 check...
-            elif sublist_count == 32 or sublist_count == 33 or sublist_count == 34:
+            #CHANDED THIS TO SUBLIST_MOD
+            elif sublist_count == 34 - sublist_mod:
                 if sub_list[0] == "OD=":
                     REMOVE_OD = True
         
 
         #runs after all the other data has been added, so that the .insert() method knows where to add 1000 FTM and 1000 DFD based on where they would be in an ideally formatted pdf
         #the final value added, "", indicates that no media for this media type was recorded on this date
+        if FTM_400S_Needed:
+            formatted_list[doc_num][1].insert(11, ["400-S", "9 trays/lot", "4", "9 trays (2)", ""])
+
         if FTM_1000_Needed:
             #experiment with removing different indices, or maybe saving which exact indice to add to specific to each unique case instead of hard-coding it
-            formatted_list[doc_num][1].insert(12, ["1000", "17-20/lot", "36", "90 (5)", ""])
+            formatted_list[doc_num][1].insert(13, ["1000", "17-20/lot", "36", "90 (5)", ""])
 
         if DFD_1000_Needed:
             formatted_list[doc_num][1].insert(25, ["DFD","1000", "34 bottles/lot", "99", "136", ""])
@@ -192,9 +211,6 @@ def data_formatter(data_list):
 
         #THIS USED TO BE AT THE START OF THE FUNCTION THIS IS A TEST
         doc_num += 1
-
-    #yes it breaks at this point
-    print("is it broken here")
 
     return formatted_list
 
@@ -230,9 +246,6 @@ def data_scraper():
             spaced_data = smart_splitter(unformatted_data)
 
             all_data.append([[filename], spaced_data])
-
-    print("is it broken this early?")
-
 
     return data_formatter(all_data), pdf_count
 
@@ -276,14 +289,14 @@ def excel_pdf_paster(formatted_data, ws):
 
             col_count = 1
 
-            for cell_data in row:
+            for row_data in row:
                 #gives the column letter and advances it forward for the next cell in a pdf's given row
                 char = get_column_letter(col_count)
                 col_count += 1
 
                 #this line is for debug purposes, but the one below it takes the data from a row on the formatted pdf data and puts it in Excel.
-                data_cell = char + str(row_count + pdf_offset)
-                ws[data_cell] = cell_data
+                row_cell = char + str(row_count + pdf_offset)
+                ws[row_cell] = row_data
 
             row_count += 1
 
@@ -329,18 +342,15 @@ def excel_media_type_adder(ws):
 
 
 def excel_data_mover(ws, pdf_count):
-
-    #old implementation (UPDATE)
-    amogus = 3
+    gap = 3
     data_offset = 0
 
     for col in range(9, pdf_count + 9):
         col_char = get_column_letter(col)
 
-        #try (3, 32)
         for row in range(3, 33):
 
-            amogus += 1
+            gap += 1
 
             cell_recieve = col_char + str(row)
 
@@ -348,9 +358,9 @@ def excel_data_mover(ws, pdf_count):
 
             #conditions for ignoring weirdly formatted cells
             if ws[cell_give].value == "OD":
-                print("code run!")
                 continue
 
+            #None can be replaced with "" to make something an Excel graph might prefer more
             elif ws[cell_give].value == None:
                 continue
 
@@ -362,7 +372,41 @@ def excel_data_mover(ws, pdf_count):
                     ws[cell_recieve] = ws[cell_give].value
         
         data_offset += 34
-        amogus = data_offset
+        gap = data_offset
+
+
+
+def excel_graph_maker(wb, ws):
+    #uhhh
+    #ws = wb.1
+
+    #this is a test
+
+    SCDB100_chart = LineChart()
+    SCDB100_chart.title = "SCDB 100 Inventory"
+    #no idea what the styles are
+    SCDB100_chart.style = 13
+    SCDB100_chart.x_axis.title = "Time"
+    SCDB100_chart.y_axis.title = "Inventory"
+
+    #max_col is a random number because i am tired
+    SCDB100_data = Reference(ws, min_col = 9, min_row = 3, max_col = 65, max_row = 9)
+    SCDB100_chart.add_data(SCDB100_data, titles_from_data = True)
+
+    SCDB100_chart.graphicalProperties.line.noFill = True
+
+
+
+
+
+
+    return ":)"
+
+
+
+
+
+
 
 
 
@@ -378,6 +422,9 @@ def run_program():
     excel_pdf_paster(formatted_data, worksheet)
     excel_media_type_adder(worksheet)
     excel_data_mover(worksheet, pdf_count)
+
+    #test
+    excel_graph_maker(workbook, worksheet)
 
     workbook.save(worksheet.title)
 
