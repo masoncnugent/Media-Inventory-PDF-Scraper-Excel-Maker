@@ -375,38 +375,30 @@ def excel_data_mover(ws, pdf_count):
         gap = data_offset
 
 
-
+#this is a test
 def excel_graph_maker(wb, ws):
-    #uhhh
-    #ws = wb.1
-
-    #this is a test
-
     SCDB100_chart = LineChart()
     SCDB100_chart.title = "SCDB 100 Inventory"
     #no idea what the styles are
-    SCDB100_chart.style = 13
+    #SCDB100_chart.style = 13
     SCDB100_chart.x_axis.title = "Time"
     SCDB100_chart.y_axis.title = "Inventory"
 
-    #max_col is a random number because i am tired
-    SCDB100_data = Reference(ws, min_col = 9, min_row = 3, max_col = 65, max_row = 9)
+    #max_col is a random number but it can be figured out programmatically
+    #I think data is x-axis and categories is y
+    SCDB100_data = Reference(ws, min_col = 9, min_row = 3, max_col = 65, max_row = 3)
+    SCDB100_categories = Reference(ws, min_col = 9, min_row = 2, max_col = 65, max_row = 2
+
+    #titles_from_data could be an issue
     SCDB100_chart.add_data(SCDB100_data, titles_from_data = True)
+    SCDB100_chart.set_categories(SCDB100_categories, titles_from_data = True)
 
-    SCDB100_chart.graphicalProperties.line.noFill = True
+    #SCDB100_chart.graphicalProperties.line.noFill = True
 
-
-
-
+    ws.add_chart(SCDB100_chart, "A1")
 
 
     return ":)"
-
-
-
-
-
-
 
 
 
