@@ -2,7 +2,7 @@ from PyPDF2 import PdfReader
 import os
 from openpyxl import Workbook
 from openpyxl.utils import get_column_letter
-from openpyxl import LineChart, Reference
+from openpyxl.chart import LineChart, Reference
 
 
 
@@ -16,10 +16,9 @@ special_case_list2 = ["pe", "ys"]
 def directory_changer():
     print("current path:")
     print(os.getcwd())
-    # os.chdir(input("Where are the inventory files stored?"))
-    os.chdir(r"C:\Users\Mason\Documents\NAMSA Test\Inventory")
-    print("path should be changed:")
-    print(os.getcwd())
+    os.chdir(input("Where are the inventory files stored?\n"))
+    #os.chdir(r"C:\Users\Mason\Documents\NAMSA Test\Inventory")
+
 
 
 #helper function for smart_splitter() that gives it the read_ahead to add to phrase to make conjoined_phrase. This allows for Excel cells to have meaningful 'categories' in cells as opposed to the raw data all being in separate cells, which would ruin formatting
@@ -379,24 +378,44 @@ def excel_data_mover(ws, pdf_count):
 def excel_graph_maker(wb, ws):
     SCDB100_chart = LineChart()
     SCDB100_chart.title = "SCDB 100 Inventory"
-    #no idea what the styles are
-    #SCDB100_chart.style = 13
     SCDB100_chart.x_axis.title = "Time"
     SCDB100_chart.y_axis.title = "Inventory"
 
-    #max_col is a random number but it can be figured out programmatically
-    #I think data is x-axis and categories is y
-    SCDB100_data = Reference(ws, min_col = 9, min_row = 3, max_col = 65, max_row = 3)
-    SCDB100_categories = Reference(ws, min_col = 9, min_row = 2, max_col = 65, max_row = 2
+    #max_col should be taken from the data (UPDATE)
 
-    #titles_from_data could be an issue
+    #this should work but does not
+    SCDB100_data = Reference(ws, min_col = 9, min_row = 3, max_col = 82, max_row = 3)
+    SCDB100_categories = Reference(ws, min_col = 9, min_row = 2, max_col = 82, max_row = 2)
+
+    #categories should be the x axis with data on the y, but instead categories has to be the series name and data has to be both x and y, which have to be flipped in Excel.
+    #this also wouldn't work for media types other than SCDB 100, since their data is separated by gaps
+
+    #this works but has backwards axes
+    SCDB100_data = Reference(ws, min_col = 9, min_row = 2, max_col = 82, max_row = 3)
+    SCDB100_categories = Reference(ws, min_col = 8, min_row = 2, max_col = 8, max_row = 2)
+
     SCDB100_chart.add_data(SCDB100_data, titles_from_data = True)
-    SCDB100_chart.set_categories(SCDB100_categories, titles_from_data = True)
+    SCDB100_chart.set_categories(SCDB100_categories)
 
-    #SCDB100_chart.graphicalProperties.line.noFill = True
+    ws.add_chart(SCDB100_chart, "H34")
 
-    ws.add_chart(SCDB100_chart, "A1")
+    #test of iteratively adding all the charts
+    """
+    #32 should be programmatically found as where the last media type row is located (UPDATE)
+    for row in range(3, 32):
+        #this part has yet to have a function
+        cell = "G" + str(row)
 
+        chart = LineChart()
+
+        chart.title = ws[cell].value + " Inventory"
+
+        chart.x_axis.title = "Date"
+        chart.y_axis.title = "Inventory"
+
+        chart_data = Reference(ws, min_col = 9, min_row = 2, max_col = 82, max_row = 3)
+        chart_categories = Reference(ws, min_col = 8, min_row = 3, max_col = 8, max_row = 3)
+    """
 
     return ":)"
 
@@ -419,5 +438,7 @@ def run_program():
     excel_graph_maker(workbook, worksheet)
 
     workbook.save(worksheet.title)
+
+    print("Excel file complete!")
 
 run_program()
