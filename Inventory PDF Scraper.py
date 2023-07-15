@@ -383,16 +383,14 @@ def excel_graph_maker(wb, ws):
 
     #max_col should be taken from the data (UPDATE)
 
-    #this should work but does not
-    SCDB100_data = Reference(ws, min_col = 9, min_row = 3, max_col = 82, max_row = 3)
-    SCDB100_categories = Reference(ws, min_col = 9, min_row = 2, max_col = 82, max_row = 2)
-
     #categories should be the x axis with data on the y, but instead categories has to be the series name and data has to be both x and y, which have to be flipped in Excel.
     #this also wouldn't work for media types other than SCDB 100, since their data is separated by gaps
 
     #this works but has backwards axes
+    #data incorporates all the data, idk how it determines the axes, given that it flips x and y
     SCDB100_data = Reference(ws, min_col = 9, min_row = 2, max_col = 82, max_row = 3)
-    SCDB100_categories = Reference(ws, min_col = 8, min_row = 2, max_col = 8, max_row = 2)
+    #categories is the series name
+    SCDB100_categories = Reference(ws, min_col = 8, min_row = 3, max_col = 8, max_row = 3)
 
     SCDB100_chart.add_data(SCDB100_data, titles_from_data = True)
     SCDB100_chart.set_categories(SCDB100_categories)
