@@ -388,12 +388,21 @@ def excel_graph_maker(wb, ws):
 
     #this works but has backwards axes
     #data incorporates all the data, idk how it determines the axes, given that it flips x and y
-    SCDB100_data = Reference(ws, min_col = 9, min_row = 2, max_col = 82, max_row = 3)
+    ##SCDB100_data = Reference(ws, min_col = 9, min_row = 2, max_col = 82, max_row = 3)
     #categories is the series name
-    SCDB100_categories = Reference(ws, min_col = 8, min_row = 3, max_col = 8, max_row = 3)
+    ##SCDB100_categories = Reference(ws, min_col = 8, min_row = 3, max_col = 8, max_row = 3)
 
-    SCDB100_chart.add_data(SCDB100_data, titles_from_data = True)
-    SCDB100_chart.set_categories(SCDB100_categories)
+    ##SCDB100_chart.add_data(SCDB100_data, titles_from_data = True)
+    ##SCDB100_chart.set_categories(SCDB100_categories)
+
+    #new implementation!
+    #this would allow for making the x axis the same for every graph while iterating through the rows for the y values
+    #from the axes limits and scale documentation page of openpyxl
+    SCDB100_x = Reference(ws, min_col = 9, min_row = 2, max_col = 82, max_row = 2)
+    SCDB100_y = Reference(ws, min_col = 9, min_row = 3, max_col = 82, max_row = 2)
+    
+    SCDB100_s = Series(SCDB100_y, x = SCDB100_x)
+    SCDB100_chart.append(SCDB100_s)
 
     ws.add_chart(SCDB100_chart, "H34")
 
@@ -411,6 +420,7 @@ def excel_graph_maker(wb, ws):
         chart.x_axis.title = "Date"
         chart.y_axis.title = "Inventory"
 
+        #this can be replaced with x and y values and the rest of the new implementation, assuming it works
         chart_data = Reference(ws, min_col = 9, min_row = 2, max_col = 82, max_row = 3)
         chart_categories = Reference(ws, min_col = 8, min_row = 3, max_col = 8, max_row = 3)
     """
