@@ -2,13 +2,40 @@ from PyPDF2 import PdfReader
 import os
 from openpyxl import Workbook
 from openpyxl.utils import get_column_letter
-from openpyxl.chart import LineChart, Reference, Series
+from openpyxl.chart import LineChart, Reference
+from openpyxl.chart.series_factory import SeriesFactory
+
+#break everything into multiple python files so you don't have to scroll through the holy texts every time you want to read something
+
+#implementing this will involve keeping the old code until this works
+
+class PDF_Storage():
+
+    def __init__(self):
+        #once home think about a substructure of how to organize all this...
+        self.pdf_list = []
 
 
-#special case list 1 and 2 form the bulk of the cases where smart_splitter() should add the read_ahead to a given phrase
-special_case_list1 = ["o", "h", "%"]
 
-special_case_list2 = ["pe", "ys"]
+class PDF ():
+    #class variables
+    pdf_id = 0
+
+    def __init__(self):
+        #instance variables
+        self.id = PDF.pdf_id
+        self.filename = None
+
+        self.FTM_400S_Needed = False
+        self.FTM_1000_Needed = False
+        self.DFD_1000_Needed = False
+
+
+        PDF.pdf_id += 1
+
+    #useful stuff for this to have...
+    #the ability to index a certain line of the pdf
+    #knowledge of bools like ftm 400, 1000, and dfd 1000 needed
 
 
 #changes the directory to where inventory pdfs are stored
@@ -22,6 +49,12 @@ def directory_changer():
 
 #helper function for smart_splitter() that gives it the read_ahead to add to phrase to make conjoined_phrase. This allows for Excel cells to have meaningful 'categories' in cells as opposed to the raw data all being in separate cells, which would ruin formatting
 def read_ahead(list, r_i, read=None):
+
+    #special case list 1 and 2 form the bulk of the cases where smart_splitter() should add the read_ahead to a given phrase
+    special_case_list1 = ["o", "h", "%"]
+
+    special_case_list2 = ["pe", "ys"]
+
     read = ""
 
     #r_i is used in place of i because it needs to progress through the list of scraped data independently from it
@@ -128,8 +161,6 @@ def smart_splitter(list_of_lists):
 #will add every media type to each pdf's Excel representation, even if none were recorded for the date. Takes from the data processed by smart_splitter(). Only adds 1000 FTM and DFD because too much more would vastly overcomplicate this. These are the only types that are missing in 2023
 def data_formatter(data_list):
     
-    #debug tool
-    check_against_formatted_list = data_list.copy()
     #a shallow copy was needed to prevent the loop running indefinitely
     formatted_list = data_list.copy()
 
@@ -236,14 +267,17 @@ def data_scraper():
             for i in range(0, len(reader.pages)):
                 selected_page = reader.pages[i]
 
-                text = selected_page.extract_text()
+                raw_text = selected_page.extract_text()
 
-                unformatted_data += text.splitlines()
+                #takes each line of the pdf as a separate string, not separated by meaningful phrases
+                unformatted_data += raw_text.splitlines()
 
             #data that is split into functional phrases without 1000 FTM and 1000 DFD added to the Excel pdf representation
             spaced_data = smart_splitter(unformatted_data)
 
             all_data.append([[filename], spaced_data])
+
+            pdf = data_formatter(all_data)
 
     return data_formatter(all_data), pdf_count
 
@@ -385,13 +419,21 @@ def excel_graph_maker(wb, ws):
     #new implementation!
     #this would allow for making the x axis the same for every graph while iterating through the rows for the y values
     #from the axes limits and scale documentation page of openpyxl
-    SCDB100_data = Reference(ws, min_col = 9, min_row = 3, max_col = 82, max_row = 3)
-    SCDB100_x = Reference(ws, min_col = 9, min_row = 2, max_col = 82, max_row = 2)
+    #made min_row = 2 just so I could test from_rows
+    SCDB100_data = Reference(ws, min_col = 9, min_row = 3, max_col = 83, max_row = 3)
+    SCDB100_x = Reference(ws, min_col = 9, min_row = 2, max_col = 83, max_row = 2)
     
     #I think this is series_factory and not series...
-    SCDB100_s = Series(SCDB100_data, xvalues = SCDB100_x)
+    SCDB100_s = SeriesFactory(SCDB100_data, xvalues = SCDB100_x)
     #the .series fixed this
     SCDB100_chart.series.append(SCDB100_s)
+
+    #okay new attempt
+    ##SCDB100_chart.add_data(SCDB100_data, from_rows = True)
+
+
+    ##print("SCDB100_chart.series")
+    ##print(SCDB100_chart.series)
 
     ws.add_chart(SCDB100_chart, "H34")
 
@@ -414,7 +456,7 @@ def excel_graph_maker(wb, ws):
         chart_categories = Reference(ws, min_col = 8, min_row = 3, max_col = 8, max_row = 3)
     """
 
-###TO MAKE EVERYONE HAPPY
+###TO MAKE EVERYONE HAPPY SORT THE DATA VERTICALLY
 
 
 
