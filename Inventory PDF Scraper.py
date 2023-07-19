@@ -2,8 +2,7 @@ from PyPDF2 import PdfReader
 import os
 from openpyxl import Workbook
 from openpyxl.utils import get_column_letter
-from openpyxl.chart import LineChart, Reference
-
+from openpyxl.chart import LineChart, Reference, Series
 
 
 #special case list 1 and 2 form the bulk of the cases where smart_splitter() should add the read_ahead to a given phrase
@@ -383,26 +382,16 @@ def excel_graph_maker(wb, ws):
 
     #max_col should be taken from the data (UPDATE)
 
-    #categories should be the x axis with data on the y, but instead categories has to be the series name and data has to be both x and y, which have to be flipped in Excel.
-    #this also wouldn't work for media types other than SCDB 100, since their data is separated by gaps
-
-    #this works but has backwards axes
-    #data incorporates all the data, idk how it determines the axes, given that it flips x and y
-    ##SCDB100_data = Reference(ws, min_col = 9, min_row = 2, max_col = 82, max_row = 3)
-    #categories is the series name
-    ##SCDB100_categories = Reference(ws, min_col = 8, min_row = 3, max_col = 8, max_row = 3)
-
-    ##SCDB100_chart.add_data(SCDB100_data, titles_from_data = True)
-    ##SCDB100_chart.set_categories(SCDB100_categories)
-
     #new implementation!
     #this would allow for making the x axis the same for every graph while iterating through the rows for the y values
     #from the axes limits and scale documentation page of openpyxl
+    SCDB100_data = Reference(ws, min_col = 9, min_row = 3, max_col = 82, max_row = 3)
     SCDB100_x = Reference(ws, min_col = 9, min_row = 2, max_col = 82, max_row = 2)
-    SCDB100_y = Reference(ws, min_col = 9, min_row = 3, max_col = 82, max_row = 2)
     
-    SCDB100_s = Series(SCDB100_y, x = SCDB100_x)
-    SCDB100_chart.append(SCDB100_s)
+    #I think this is series_factory and not series...
+    SCDB100_s = Series(SCDB100_data, xvalues = SCDB100_x)
+    #the .series fixed this
+    SCDB100_chart.series.append(SCDB100_s)
 
     ws.add_chart(SCDB100_chart, "H34")
 
@@ -424,6 +413,13 @@ def excel_graph_maker(wb, ws):
         chart_data = Reference(ws, min_col = 9, min_row = 2, max_col = 82, max_row = 3)
         chart_categories = Reference(ws, min_col = 8, min_row = 3, max_col = 8, max_row = 3)
     """
+
+###TO MAKE EVERYONE HAPPY
+
+
+
+
+
 
     return ":)"
 
