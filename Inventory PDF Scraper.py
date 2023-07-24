@@ -4,22 +4,15 @@ from openpyxl import Workbook
 from openpyxl.utils import get_column_letter
 from openpyxl.chart import LineChart, Reference
 from openpyxl.chart.series_factory import SeriesFactory
+from openpyxl.chart.axis import DateAxis
 
 #break everything into multiple python files so you don't have to scroll through the holy texts every time you want to read something
-
-#implementing this will involve keeping the old code until this works
-
-class PDF_Storage():
-
-    def __init__(self):
-        #once home think about a substructure of how to organize all this...
-        self.pdf_list = []
-
 
 
 class PDF:
     #class variables
     pdf_id = 1
+
 
     def __init__(self, unformatted_data, filename):
         #instance variables
@@ -39,13 +32,8 @@ class PDF:
 
         PDF.pdf_id += 1
 
-    #useful stuff for this to have...
-    #the ability to index a certain line of the pdf
-    #knowledge of bools like ftm 400, 1000, and dfd 1000 needed
-
+    #formats the data to have functional phrases with missing media types added
     def data_correcter(self, unformatted_data):
-        #data that is split into functional phrases without 1000 FTM and 1000 DFD added to the Excel pdf representation
-        #update comment description
         spaced_data = smart_splitter(unformatted_data)
 
         formatted_data = data_formatter(self, spaced_data)
@@ -53,15 +41,14 @@ class PDF:
         return formatted_data
 
 
-
     #returns a particular line of the pdf
     def line_retrieval(self, line_num):
+
         #the '-1' turns the line_num into a list indice
         return self.data[line_num - 1]
 
 
     #gets the length of the pdf based on its self.data instance variable
-
     def length_checker(self):
         length = 0
 
@@ -382,7 +369,8 @@ def excel_pdf_paster(pdf_list, ws):
         date_offset += 1
 
 
-
+#works from the first pdf, assuming it was formatted correctly and identically to all other pdfs
+#frameshift issues occur when this assumption is not met
 def excel_media_type_adder(ws):
 
     for i in range(3, 11):
@@ -396,6 +384,7 @@ def excel_media_type_adder(ws):
 
 
 
+#this can be re-written using pdf.inventory_list, which would greatly reduce errors and enhance readability
 def excel_data_mover(ws, pdf_count):
     gap = 3
     data_offset = 0
@@ -430,38 +419,27 @@ def excel_data_mover(ws, pdf_count):
         gap = data_offset
 
 
-#this is still in the testing phases
-def excel_graph_maker(wb, ws):
-    SCDB100_chart = LineChart()
-    SCDB100_chart.title = "SCDB 100 Inventory"
-    SCDB100_chart.x_axis.title = "Time"
-    SCDB100_chart.y_axis.title = "Inventory"
-
-    #max_col should be taken from the data (UPDATE)
-
-    #new implementation!
-    #this would allow for making the x axis the same for every graph while iterating through the rows for the y values
-    #from the axes limits and scale documentation page of openpyxl
-    #made min_row = 2 just so I could test from_rows
-    SCDB100_data = Reference(ws, min_col = 9, min_row = 3, max_col = 83, max_row = 3)
-    SCDB100_x = Reference(ws, min_col = 9, min_row = 2, max_col = 83, max_row = 2)
+#this is still in the testing phases, as specifying data for use in the graphs has poor documentation for openpyxl
+def excel_graph_maker(wb, ws, pdf_list):
     
-    #I think this is series_factory and not series...
-    SCDB100_s = SeriesFactory(SCDB100_data, xvalues = SCDB100_x)
-    #the .series fixed this
-    SCDB100_chart.series.append(SCDB100_s)
-
-    #okay new attempt
-    ##SCDB100_chart.add_data(SCDB100_data, from_rows = True)
-
-
-    ##print("SCDB100_chart.series")
-    ##print(SCDB100_chart.series)
-
-    ws.add_chart(SCDB100_chart, "H34")
+    #dateaxis might be an import from openpyxl.chart.axis
+    #I think with dateaxis your 'dates' cells have to be in a formatting it can turn into a true date
+    #this would format and scale better as Excel is treating the axis as one with special date properties.
+    for i in range(1, PDF.pdf_id):
+        line_chart = LineChart()
+        line_chart.title = "test inventory"
 
 
-    return ":)"
+    #IT TRUNCATES THEM WHEN IT DETECTS IT CAN BE ONE REFERENCE
+    #series Reference for SCDB100 should look like this
+    #'Inventory Analytics.xlsx'!$I$3:$CG$3
+
+    #series Reference for SCDB400 should look like this
+    #'Inventory Analytics.xlsx'!$I$4:$CG$4
+
+    #SEE THIS?, THIS IS THE AXIS LABEL RANGE, THIS IS YOUR X VALUES. SERIES VALUES ARE THE Y VALUES
+    #AHA
+    #='Inventory Analytics.xlsx'!$I$2:$CG$2
 
 
 
@@ -485,7 +463,7 @@ def run_program():
     excel_data_mover(worksheet, PDF.pdf_id)
 
     #test
-    excel_graph_maker(workbook, worksheet)
+    excel_graph_maker(workbook, worksheet, pdf_list)
 
     workbook.save(worksheet.title)
 
