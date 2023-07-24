@@ -17,11 +17,11 @@ class PDF_Storage():
 
 
 
-class PDF ():
+class PDF:
     #class variables
-    pdf_id = 0
+    pdf_id = 1
 
-    def __init__(self):
+    def __init__(self, data):
         #instance variables
         self.id = PDF.pdf_id
         self.filename = None
@@ -29,6 +29,8 @@ class PDF ():
         self.FTM_400S_Needed = False
         self.FTM_1000_Needed = False
         self.DFD_1000_Needed = False
+        self.data = data
+        self.length = length_checker()
 
 
         PDF.pdf_id += 1
@@ -36,6 +38,15 @@ class PDF ():
     #useful stuff for this to have...
     #the ability to index a certain line of the pdf
     #knowledge of bools like ftm 400, 1000, and dfd 1000 needed
+
+
+    def line_retrieval():
+
+
+    
+    def length_checker():
+
+    
 
 
 #changes the directory to where inventory pdfs are stored
