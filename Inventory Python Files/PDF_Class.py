@@ -62,8 +62,12 @@ class PDF:
                 inventory_list.append(int(pdf_line[-1]))
             
             except:
-                if pdf_line[-1] == "OD":
+                if pdf_line[-1] == "":
                     inventory_list.append("")
+
+                elif pdf_line[-1] == "OD":
+                    inventory_list.append("")
+                
                 continue
         
         return inventory_list
