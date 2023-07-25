@@ -24,7 +24,7 @@ def excel_wb_maker():
 
 
 
-def excel_pdf_paster(ws):
+def excel_pdf_vertical_copier(ws):
     #allows the rows to be placed where they need to be, and allows for space in between pasted pdfs in Excel
     pdf_offset = 1
 
@@ -86,9 +86,7 @@ def excel_media_type_adder(ws):
 
 
 #this can be re-written using pdf.inventory_list, which would greatly reduce errors and enhance readability
-def excel_data_mover(ws):
-    gap = 3
-    data_offset = 0
+def excel_pdf_inventory_copier(ws):
 
     #this is where the data starts to be printed
     col_data_offset = 9
@@ -109,18 +107,49 @@ def excel_data_mover(ws):
         col_data_offset += 1
 
 
-#THE END OF THE INVENTORY LIST MIGHT BE MESSED UP
-
 
 #this is still in the testing phases, as specifying data for use in the graphs has poor documentation for openpyxl
-def excel_graph_maker(ws):
+def excel_graph_maker(wb, ws):
     
     #dateaxis might be an import from openpyxl.chart.axis
     #I think with dateaxis your 'dates' cells have to be in a formatting it can turn into a true date
     #this would format and scale better as Excel is treating the axis as one with special date properties.
     for i in range(1, PDF.pdf_id):
         line_chart = LineChart()
-        line_chart.title = "test inventory"
+        line_chart.title = "Test Inventory"
+        line_chart.x_axis.title = "Date"
+        line_chart.y_axis.title = "Inventory"
+
+        #experiment with what this 'crossAx' thing is...
+        #line_chart.x_axis = DateAxis()
+        #line_chart.x_axis = DateAxis(crossAx=100)
+
+        #this mcustom number format could break things
+        #line_chart.x_axis.number_format = "yy-mm-dd"
+
+        #line_chart.x_axis.majorTimeUnit = "days"
+
+        #PDF.pdf_id might have to be +8 or something else to work
+        #data
+        y_values = Reference(ws, min_col = 9, min_row = i + 2, max_col = PDF.pdf_id + 7, max_row = i + 2)
+
+        #categories
+        x_values = Reference(ws, min_col = 9, min_row = 2, max_col = PDF.pdf_id + 7, max_row = 2)
+
+        #experiment with what 'titles_from_data' does
+        #this should add the y-values
+        #if it's from_rows that's the answer I'm gonna be so mad
+        line_chart.set_categories(x_values)
+
+        #this should add the x-values
+        #line_chart.set_categories(x_values)
+        line_chart.add_data(y_values, from_rows = True)
+
+        ws.add_chart(line_chart, "H34")
+        break
+
+
+    #Chat-GPT says that set_categories has to take in numbers, and not text...
 
 
     #IT TRUNCATES THEM WHEN IT DETECTS IT CAN BE ONE REFERENCE
@@ -141,14 +170,16 @@ def excel_batch_processor():
 
     wb, ws = excel_wb_maker()
 
-    excel_pdf_paster(ws)
+    excel_pdf_vertical_copier(ws)
 
     excel_media_type_adder(ws)
 
-    excel_data_mover(ws)
+    excel_pdf_inventory_copier(ws)
 
     #could switch worksheets for this by this point
-    excel_graph_maker(ws)
+
+    #adding wb to help with debugging
+    excel_graph_maker(wb, ws)
 
     wb.save(ws.title)
 
