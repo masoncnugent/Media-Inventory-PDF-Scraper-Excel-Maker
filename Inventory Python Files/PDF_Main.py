@@ -15,7 +15,8 @@ def directory_changer():
     #return os.chdir(r"P:\Public\Microbiology\Media Prep\Media Inventory\2023")
 
     #work version C drive
-    return os.chdir(r"C:\Users\MCN2226\inventory speed test")
+    #return os.chdir(r"C:\Users\MCN2226\inventory speed test")
+    return os.chdir(r"C:\Users\MCN2226\Documents\inventory test")
 
     #home desktop version
     #return os.chdir(r"C:\Users\Mason\Documents\NAMSA Test\Inventory")
@@ -45,6 +46,8 @@ def run_program():
 
 run_program()
 
-#One assumption is that the first pdf is formatted ideally, since it's media types are used to format the rest of the data into cells for use in graphs
+#one assumption is that the first pdf is formatted ideally, since it's media types are used to format the rest of the data into cells for use in graphs
 
 #the work pc is slow due to the time needed to load each pdf from the shared storage, not due to processing times
+
+#next up is adding percents of inv / minimum to show as a line on each chart too
