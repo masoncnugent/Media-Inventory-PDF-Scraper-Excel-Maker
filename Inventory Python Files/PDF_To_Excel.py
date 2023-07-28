@@ -77,26 +77,35 @@ def excel_pdf_vertical_copier(ws):
 #frameshift issues occur when this assumption is not met
 def excel_media_type_adder(ws):
 
-    #adds the word "Media Type" above its respective column
-    ws["I1"] = "Media Type"
-
     #start at I2 and move to J2, K2, etc.
 
     #the first two ranges handle the cases where SCDB and FTM have to be added to the media type titles
     #there is an assumption that nothing new will be added into SCDB and FTM, built into the lengths of each section being hardcoded
+    #this allows for the minimum columns to exist alongside the data for each media type
+    min_offset = 0
     for i in range(3, 11):
-        ws[get_column_letter(i + 6) + "2"] = ws["A3"].value + " " + ws["B" + str(i)].value
+        ws[get_column_letter(i + 6 + min_offset) + "2"] = ws["A3"].value + " " + ws["B" + str(i)].value
         PDF.pdf_media_type_list.append(ws["A3"].value + " " + ws["B" + str(i)].value)
+        min_offset += 1
 
     for i in range(11, 19):
-        ws[get_column_letter(i + 6) + "2"] = ws["A11"].value + " " + ws["B" + str(i)].value
+        ws[get_column_letter(i + 6 + min_offset) + "2"] = ws["A11"].value + " " + ws["B" + str(i)].value
         PDF.pdf_media_type_list.append(ws["A11"].value + " " + ws["B" + str(i)].value)
+        min_offset += 1
 
     #the end is dynamically encoded to match the length of each PDF
     for i in range(19, PDF.pdf_length + 2):
-        ws[get_column_letter(i + 6) + "2"] = ws["A" + str(i)].value + " " + ws["B" + str(i)].value
+        ws[get_column_letter(i + 6 + min_offset) + "2"] = ws["A" + str(i)].value + " " + ws["B" + str(i)].value
         PDF.pdf_media_type_list.append(ws["A" + str(i)].value + " " + ws["B" + str(i)].value)
+        min_offset += 1
 
+    #adds the words "Media Type" and "Minimum" above their respective column
+    for i in range(len(PDF.pdf_media_type_list)):
+        inv_title_col_let = get_column_letter(9 + (2 * i))
+        med_title_col_let = get_column_letter(10 + (2 * i))
+
+        ws[inv_title_col_let + "1"] = "Media Type"
+        ws[med_title_col_let + "2"] = "Minimum"
 
 #this can be re-written using pdf.inventory_list, which would greatly reduce errors and enhance readability
 def excel_pdf_inventory_copier(ws):
@@ -108,13 +117,26 @@ def excel_pdf_inventory_copier(ws):
         col_data_offset = 9
 
         inv_list = pdf.inventory_list
+        min_list = pdf.minimum_list
 
-        for inv_val in inv_list:
-            col_let = get_column_letter(col_data_offset)
-            ws[col_let + str(row_data_offset)] = inv_val
+        if len(inv_list) != len(min_list):
+            raise Exception("inv_list and min_list for " + str(pdf.filename) + " are not of the same length.")
+
+        #inv_list and minimum_list should have the same length
+        for i in range(len(inv_list)):
+            #the column letters have to be offset for the minimum to be one ahead of the column letters for the inventory
+            inv_col_let = get_column_letter(col_data_offset)
+            min_col_let = get_column_letter(col_data_offset)
+            ws[inv_col_let + str(row_data_offset)] = inv_list[i]
 
             #the row changes to allow each inventory value for a pdf to be printed
-            col_data_offset += 1
+            #the += 2 accounts for the fact that the minimum values need to be pasted alongside the inventory values
+            min_col_let = get_column_letter(col_data_offset + 1)
+            try:
+                ws[min_col_let + str(row_data_offset)] = int(min_list[i])
+            except:
+                ws[min_col_let + str(row_data_offset)] = ""
+            col_data_offset += 2
         
         #the column changes once each pdf has their values pasted
         row_data_offset += 1
@@ -127,6 +149,7 @@ def excel_graph_maker(wb, ws):
     #starts at the eighth column, or H
     graph_col_offset = 8
     graph_row_offset = 0
+    inv_min_offset = 0
     #dateaxis might be an import from openpyxl.chart.axis
     #I think with dateaxis your 'dates' cells have to be in a formatting it can turn into a true date
     #this would format and scale better as Excel is treating the axis as one with special date properties.
@@ -147,12 +170,14 @@ def excel_graph_maker(wb, ws):
 
         #line_chart.x_axis.majorTimeUnit = "days"
 
+
         #data
-        #changed to min_row = 2 with titles_from_data = True
-        y_values = Reference(ws, min_col = 8 + i, min_row = 2, max_col = 8 + i, max_row = PDF.pdf_id + 2)
+        #added one more column to max_col to see if it would include the minimum values as its own series
+        y_values = Reference(ws, min_col = 8 + i + inv_min_offset, min_row = 2, max_col = 9 + i + inv_min_offset, max_row = PDF.pdf_id + 1)
+        inv_min_offset += 1
 
         #categories
-        x_values = Reference(ws, min_col = 8, min_row = 3, max_col = 8, max_row = PDF.pdf_id + 2)
+        x_values = Reference(ws, min_col = 8, min_row = 3, max_col = 8, max_row = PDF.pdf_id + 1)
 
         #this should add the x-values
         line_chart.add_data(y_values, titles_from_data = True)
