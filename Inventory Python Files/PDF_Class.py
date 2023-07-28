@@ -4,7 +4,8 @@ class PDF:
     #class variables
     pdf_id = 1
     pdf_list = []
-
+    pdf_length = 0
+    pdf_media_type_list = []
 
     def __init__(self, unformatted_data, filename):
         #instance variables
@@ -18,8 +19,12 @@ class PDF:
         self.Remove_OD = False
         #data portion is the 1st index as a list of all the lines
         self.data = self.data_correcter(unformatted_data)
+        #also checks for errors with PDFs of invalid length after correction
+        PDF.pdf_length = self.length_checker()
         self.inventory_list = self.inventory_list_maker()
-        self.length = self.length_checker()
+        #to add the minimum as a series on each graph
+        self.minimum_list = self.minimum_list_maker()
+        PDF.pdf_length = self.length_checker()
 
         PDF.pdf_list.append(self)
 
@@ -46,12 +51,16 @@ class PDF:
 
     #gets the length of the pdf based on its self.data instance variable
     def length_checker(self):
-        length = 0
+        self_length = 0
 
         for line in self.data:
-            length += 1
-        
-        return length
+            self_length += 1
+
+        if PDF.pdf_length != 0:
+            if PDF.pdf_length != self_length:
+                raise Exception("PDF " + str(self.filename) + " has a formatting which gave it a different length from the others")
+
+        return self_length
     
     def inventory_list_maker(self):
         inventory_list = []
@@ -71,6 +80,19 @@ class PDF:
                 continue
         
         return inventory_list
+    
+
+
+    def minimum_list_maker(self):
+        minimum_list = []
+        for line in self.data:
+            #doesn't add the first line of each pdf
+            if line[-3] == "Minimum":
+                continue
+            minimum_list.append(line[-3])
+
+
+        return minimum_list
     
 
 
@@ -238,16 +260,18 @@ def data_formatter(pdf, spaced_data):
                 pdf.Remove_OD = True
     
 
+
     #runs after all the other data has been added, so that the .insert() method knows where to add 1000 FTM and 1000 DFD based on where they would be in an ideally formatted pdf
     #the final value added, "", indicates that no media for this media type was recorded on this date
+    #EVERYTHING AFTER THE SIZE HAS BEEN MADE BLANK SEE IF THIS CAUSES ANY ERRORS
     if pdf.FTM_400S_Needed:
-        spaced_data_copy.insert(11, ["400-S", "9 trays/lot", "4", "9 trays (2)", ""])
+        spaced_data_copy.insert(11, ["400-S", "", "", "", ""])
 
     if pdf.FTM_1000_Needed:
-        spaced_data_copy.insert(13, ["1000", "17-20/lot", "36", "90 (5)", ""])
+        spaced_data_copy.insert(13, ["1000", "", "", "", ""])
 
     if pdf.DFD_1000_Needed:
-        spaced_data_copy.insert(25, ["DFD","1000", "34 bottles/lot", "99", "136", ""])
+        spaced_data_copy.insert(25, ["DFD","1000", "", "", "", ""])
 
     if pdf.Remove_OD:
         spaced_data_copy.pop(-1)
