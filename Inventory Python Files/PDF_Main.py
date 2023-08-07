@@ -16,13 +16,13 @@ def directory_changer():
 
     #work version C drive
     #return os.chdir(r"C:\Users\MCN2226\inventory speed test")
-    return os.chdir(r"C:\Users\MCN2226\Documents\inventory test")
+    #return os.chdir(r"C:\Users\MCN2226\Documents\inventory test")
 
     #home desktop version
     #return os.chdir(r"C:\Users\Mason\Documents\NAMSA Test\Inventory")
 
     #home laptop version
-    #return os.chdir(r"C:\Users\mason\OneDrive\Documents\Python Projects\Inventory Files")
+    return os.chdir(r"C:\Users\mason\OneDrive\Documents\Python Projects\Inventory Files")
 
 
 
