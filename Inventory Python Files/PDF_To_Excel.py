@@ -191,11 +191,8 @@ def excel_graph_maker(wb, ws):
 
         ws.add_chart(line_chart, graph_anchor)
 
+        #utilizes new functions in progress
         graph_metadata_adder(ws, graph_anchor, i - 1)
-
-        #the +14 is to get the data below the graph
-        ws[get_column_letter(graph_col_offset) + str(PDF.pdf_id + 3 + graph_row_offset + 14)] = "test"
-
 
         graph_col_offset += 10
         #starts drawing graphs lower on the screen instead of more horizontally
@@ -254,8 +251,12 @@ def base_26_to_let(base_26_num):
         remainder = round((quotient - quotient_int) * 26)
         code_list.insert(0, remainder)
 
-        if quotient_int < 26:
+        if 0 < quotient_int < 26:
             code_list.insert(0, quotient_int)
+            loop_logic = False
+
+        #quotient_int of 0 would give another letter erroneously added, so this was included
+        elif quotient_int == 0:
             loop_logic = False
 
     letters = ""
@@ -287,6 +288,7 @@ def excel_cell_shifter(cell, x_shift = 0, y_shift = 0):
         numbers = numbers + y_shift
 
     #runs the functions needed to advance the letters
+    #tested for negative numbers
     if x_shift != 0:
         #shifting letters is not easy, but entirely feasible by converting to a base 10 number code, assuming letters are a base 26 system
         letters = base_26_to_let(let_to_base_26(letters, x_shift))
@@ -298,38 +300,45 @@ def excel_cell_shifter(cell, x_shift = 0, y_shift = 0):
 
 #factoring in graph_length and width is a bit too hard since Excel doesn't by default make graphs full cells in width and length
 def graph_metadata_adder(ws, graph_anchor, media_type_indice, graph_length=None, graph_width=None):
-    #now, how to take the graph anchor, displace by things like graph_length or graph_width
-    #test
+    #now, how to take the graph anchor, displace by things like graph_length or 
+#temp variable names
+    wrap_val = 0
+    right_val = 0
 
-    ZAD = base_26_to_let(let_to_base_26("A", 16903))
-    print(ZAD)
+    #hmm maybe we aren't iterating properly, in some way
 
-    metadata_start_point = excel_cell_shifter(graph_anchor, y_shift = 14)
-    should_be_same = graph_anchor[0] + str(int(graph_anchor[1:]) + 14)
-    print("are these the same?")
+
+    #metadata starts below each graph, and from the top left anchor of a given graph the first available cell below the graph is 13 cells down
+    metadata_start_point = excel_cell_shifter(graph_anchor, x_shift = wrap_val, y_shift = 13 + right_val)
 
 #should only iterate for as many months there are
     for i in range(0, len(PDF.pdf_month_list)):
         #so each time we want to iterate 
         cur_month_ratio = PDF.pdf_monthly_inv_ratios[i][media_type_indice]
 
-        #testing variables
-        #NOW TO CHANGE THIS USING OUR NEW FUNCTIONS
-        inv_min_loc = ws[metadata_start_point[0] + str(int(graph_anchor[1:]) + 1)]
-        mon_rat_loc = ws[metadata_start_point[0] + str(int(graph_anchor[1:]) + 2)]
-        print("hmm")
-        ws[metadata_start_point[0] + str(int(graph_anchor[1:]) + 1)] = "Inv/Min"
-        ws[metadata_start_point[0] + str(int(graph_anchor[1:]) + 2)] = PDF.pdf_monthly_inv_ratios[i][media_type_indice]
+
+        #these use excel_cell_shifter() to determine where to be relative to the start of where metadata should be printed below each graph
+        inv_min_loc = excel_cell_shifter(metadata_start_point, y_shift = 1)
+        mon_rat_loc = excel_cell_shifter(metadata_start_point, y_shift = 2)
+
+        ws[inv_min_loc] = "Inv/Min"
+        ws[mon_rat_loc] = PDF.pdf_monthly_inv_ratios[i][media_type_indice]
 
         if PDF.pdf_month_list[i] != "January":
+            ratio_dif_loc = excel_cell_shifter(metadata_start_point, y_shift = 3)
             try:
-                ws[metadata_start_point[0] + str(int(graph_anchor[1:]) + 3)] = round(((cur_month_ratio / pre_month_ratio) * 100), 2)
+                ws[ratio_dif_loc] = str(round((cur_month_ratio / pre_month_ratio), 2)) + "%"
             except:
                 #test
-                ws[metadata_start_point[0] + str(int(graph_anchor[1:]) + 3)] = "NA"
+                ws[ratio_dif_loc] = "NA"
 
         pre_month_ratio = PDF.pdf_monthly_inv_ratios[i][media_type_indice]
 
+        right_val += 1
+        #should allow for the metadata to not stack up
+        if right_val == 9:
+            wrap_val += 1
+            right_val = 0
 
 
 #runs all excel related functions. data_scraper() has to be run first to create the PDF class with all it's PDF objects
