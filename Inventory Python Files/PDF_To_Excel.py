@@ -1,8 +1,8 @@
 from openpyxl import Workbook
 from openpyxl.utils import get_column_letter
 from openpyxl.chart import LineChart, Reference
-from openpyxl.chart.series_factory import SeriesFactory
 from openpyxl.chart.axis import DateAxis
+import math
 
 from PDF_Class import PDF
 
@@ -107,6 +107,8 @@ def excel_media_type_adder(ws):
         ws[inv_title_col_let + "1"] = "Media Type"
         ws[med_title_col_let + "2"] = "Minimum"
 
+
+
 #this can be re-written using pdf.inventory_list, which would greatly reduce errors and enhance readability
 def excel_pdf_inventory_copier(ws):
 
@@ -184,13 +186,149 @@ def excel_graph_maker(wb, ws):
         line_chart.set_categories(x_values)
         
         #makes each individual chart and offsets the position for the next one
-        ws.add_chart(line_chart, get_column_letter(graph_col_offset) + str(PDF.pdf_id + 3 + graph_row_offset))
+        #the +3 is for the top of the chart, I believe (check)
+        graph_anchor = get_column_letter(graph_col_offset) + str(PDF.pdf_id + 3 + graph_row_offset)
+
+        ws.add_chart(line_chart, graph_anchor)
+
+        graph_metadata_adder(ws, graph_anchor, i - 1)
+
+        #the +14 is to get the data below the graph
+        ws[get_column_letter(graph_col_offset) + str(PDF.pdf_id + 3 + graph_row_offset + 14)] = "test"
+
+
         graph_col_offset += 10
         #starts drawing graphs lower on the screen instead of more horizontally
         if graph_col_offset > 28:
             graph_col_offset = 8
             #the '16' should be the height of each graph
-            graph_row_offset += 16
+            graph_row_offset += 17
+
+
+    #final graph of all the data
+    final_line_chart = LineChart()
+    final_line_chart.title = "Total Inventory"
+    final_line_chart.x_axis.title = "Date"
+    final_line_chart.y_axis.title = "Inventory"
+
+    y_values = Reference(ws, min_col = 9, min_row = 2, max_col = 9 + (PDF.pdf_id * 2), max_row = PDF.pdf_id + 1)
+    x_values = Reference(ws, min_col = 8, min_row = 3, max_col = 8, max_row = PDF.pdf_id + 1)
+    final_line_chart.add_data(y_values, titles_from_data = True)
+    final_line_chart.set_categories(x_values)
+    ws.add_chart(final_line_chart, get_column_letter(graph_col_offset) + str(PDF.pdf_id + 3 + graph_row_offset))
+
+
+
+#pdf_monthly_inv_ratio is a list of lists, where each list has the averages for every media type for a given month
+#pdf_monthly_inv_ratio[0] is January's averages, [2] is March, etc.
+
+
+#adding the x_shift makes the most sense here since the number code can be returned with the addition or subtraction
+def let_to_base_26(letters, x_shift = 0):
+    #this is neither the prettiest, nor fastest, implementation. But it is one still
+    let_list = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
+    high_exp = len(letters) - 1
+
+    base_26_num = 0
+    for let in letters.upper():
+        mult_val = let_list.index(let)
+        base_26_num += mult_val * (26 ** high_exp)
+        high_exp -= 1
+
+    #check if this works with negative x_shift values
+    base_26_num += x_shift
+
+    return base_26_num
+
+
+
+def base_26_to_let(base_26_num):
+    quotient_int = base_26_num
+    code_list = []
+    loop_logic = True
+    let_list = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
+    while loop_logic:
+        quotient = quotient_int / 26
+        quotient_int = math.floor(quotient)
+        #float stuff might cause issues here
+        remainder = round((quotient - quotient_int) * 26)
+        code_list.insert(0, remainder)
+
+        if quotient_int < 26:
+            code_list.insert(0, quotient_int)
+            loop_logic = False
+
+    letters = ""
+    for code in code_list:
+        letters += let_list[code]
+
+    return letters
+
+#returns a cell shifted up, down, left, or right, according to the shift parameters
+#+3 in x_shift moves the column 3 to the right, while -2 in y_shift moves the row 2 down.
+def excel_cell_shifter(cell, x_shift = 0, y_shift = 0):
+
+    #determines where the numbers start in the cell code, considers cases like "A2" as well as "AA2", or even "AAAAA2"
+    num_start_ind = -1
+    letters = ""
+    for char in cell:
+        num_start_ind += 1
+        try:
+            int(char)
+            break
+
+        except:
+            letters += char
+            continue
+    
+    numbers = int(cell[num_start_ind:])
+
+    if y_shift != 0:
+        numbers = numbers + y_shift
+
+    #runs the functions needed to advance the letters
+    if x_shift != 0:
+        #shifting letters is not easy, but entirely feasible by converting to a base 10 number code, assuming letters are a base 26 system
+        letters = base_26_to_let(let_to_base_26(letters, x_shift))
+
+    return letters + str(numbers)
+
+
+
+
+#factoring in graph_length and width is a bit too hard since Excel doesn't by default make graphs full cells in width and length
+def graph_metadata_adder(ws, graph_anchor, media_type_indice, graph_length=None, graph_width=None):
+    #now, how to take the graph anchor, displace by things like graph_length or graph_width
+    #test
+
+    ZAD = base_26_to_let(let_to_base_26("A", 16903))
+    print(ZAD)
+
+    metadata_start_point = excel_cell_shifter(graph_anchor, y_shift = 14)
+    should_be_same = graph_anchor[0] + str(int(graph_anchor[1:]) + 14)
+    print("are these the same?")
+
+#should only iterate for as many months there are
+    for i in range(0, len(PDF.pdf_month_list)):
+        #so each time we want to iterate 
+        cur_month_ratio = PDF.pdf_monthly_inv_ratios[i][media_type_indice]
+
+        #testing variables
+        #NOW TO CHANGE THIS USING OUR NEW FUNCTIONS
+        inv_min_loc = ws[metadata_start_point[0] + str(int(graph_anchor[1:]) + 1)]
+        mon_rat_loc = ws[metadata_start_point[0] + str(int(graph_anchor[1:]) + 2)]
+        print("hmm")
+        ws[metadata_start_point[0] + str(int(graph_anchor[1:]) + 1)] = "Inv/Min"
+        ws[metadata_start_point[0] + str(int(graph_anchor[1:]) + 2)] = PDF.pdf_monthly_inv_ratios[i][media_type_indice]
+
+        if PDF.pdf_month_list[i] != "January":
+            try:
+                ws[metadata_start_point[0] + str(int(graph_anchor[1:]) + 3)] = round(((cur_month_ratio / pre_month_ratio) * 100), 2)
+            except:
+                #test
+                ws[metadata_start_point[0] + str(int(graph_anchor[1:]) + 3)] = "NA"
+
+        pre_month_ratio = PDF.pdf_monthly_inv_ratios[i][media_type_indice]
 
 
 
