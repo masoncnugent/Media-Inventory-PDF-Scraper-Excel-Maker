@@ -336,9 +336,12 @@ def graph_metadata_adder(ws, graph_anchor, media_type_indice, graph_length=None,
         ws[mon_loc] = PDF.pdf_month_list[i]
         ws[inv_min_loc] = "Inv/Min"
 
-        #this one looks better but it causes the % changes to break
-        #ws[mon_rat_loc] = str(PDF.pdf_monthly_inv_ratios[i][media_type_indice] * 100) + "%"
-        ws[mon_rat_loc] = PDF.pdf_monthly_inv_ratios[i][media_type_indice]
+
+        #this should make the percentage differences not have rounding errors
+        try:
+            ws[mon_rat_loc] = round(PDF.pdf_monthly_inv_ratios[i][media_type_indice], 2)
+        except:
+            ws[mon_rat_loc] = PDF.pdf_monthly_inv_ratios[i][media_type_indice]
 
         if PDF.pdf_month_list[i] != "January":
             #the cell name for where the percentage change against last month will be mapped to
