@@ -14,15 +14,16 @@ def directory_changer():
     #work version H drive
     #return os.chdir(r"P:\Public\Microbiology\Media Prep\Media Inventory\2023")
 
-    #work version C drive
-    #return os.chdir(r"C:\Users\MCN2226\inventory speed test")
+    #work version upstairs
+    return os.chdir(r"C:\Users\MCN2226\inventory speed test\Inventory Files")
+
     #return os.chdir(r"C:\Users\MCN2226\Documents\inventory test")
 
     #home desktop version
     #return os.chdir(r"C:\Users\Mason\Documents\NAMSA Test\Inventory")
 
     #home laptop version
-    return os.chdir(r"C:\Users\mason\OneDrive\Documents\Python Projects\Inventory Files")
+    #return os.chdir(r"C:\Users\mason\OneDrive\Documents\Python Projects\Inventory Files")
 
 
 
@@ -50,4 +51,4 @@ run_program()
 
 #the work pc is slow due to the time needed to load each pdf from the shared storage, not due to processing times
 
-#next up is adding percents of inv / minimum to show as a line on each chart too
+#maybe make a list of key words for the comments for clarity. EX: 'Line' should be replaced with something easily understandable that couldn't be confused with something else.
