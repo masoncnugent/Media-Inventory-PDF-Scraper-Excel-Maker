@@ -14,7 +14,7 @@ def excel_wb_maker():
     #sets the relevant sheet of the Excel document that will be edited
     ws = wb.active
 
-    #gives the name for the resulting saved Excel file
+    #gives the name for the resulting saved Exc el file
     ws.title = "Inventory Analytics.xlsx"
 
     #this sheet stores the graphs made from the pdf data
@@ -194,12 +194,18 @@ def excel_graph_maker(wb, ws):
         #utilizes new functions in progress
         graph_metadata_adder(ws, graph_anchor, i - 1)
 
-        graph_col_offset += 10
+
         #starts drawing graphs lower on the screen instead of more horizontally
+        graph_col_offset += 10
         if graph_col_offset > 28:
             graph_col_offset = 8
-            #the '16' should be the height of each graph
-            graph_row_offset += 17
+
+            #the '17' should be the height of each graph
+            #graphs should be offset more or less depending on how much metadata is beneath them
+            if len(PDF.pdf_month_list) > 6: 
+                graph_row_offset += 23
+            else:
+                graph_row_offset += 19
 
 
     #final graph of all the data
@@ -228,9 +234,13 @@ def let_to_base_26(letters, x_shift = 0):
 
     base_26_num = 0
     for let in letters.upper():
-        mult_val = let_list.index(let)
+        #added + 1 to mult_val so AB doesn't give a base_26_num of 1
+        mult_val = let_list.index(let) + 1
+        #for AB this would give 26 + 2 = 28
         base_26_num += mult_val * (26 ** high_exp)
         high_exp -= 1
+
+    #AB might give issues because it's 
 
     #check if this works with negative x_shift values
     base_26_num += x_shift
@@ -249,6 +259,7 @@ def base_26_to_let(base_26_num):
         quotient_int = math.floor(quotient)
         #float stuff might cause issues here
         remainder = round((quotient - quotient_int) * 26)
+        #does the -1 compensate
         code_list.insert(0, remainder)
 
         if 0 < quotient_int < 26:
@@ -261,7 +272,8 @@ def base_26_to_let(base_26_num):
 
     letters = ""
     for code in code_list:
-        letters += let_list[code]
+        #this -1 might compensate for the +1 added to let_to_base_26 for "A"
+        letters += let_list[code - 1]
 
     return letters
 
@@ -302,14 +314,11 @@ def excel_cell_shifter(cell, x_shift = 0, y_shift = 0):
 def graph_metadata_adder(ws, graph_anchor, media_type_indice, graph_length=None, graph_width=None):
     #now, how to take the graph anchor, displace by things like graph_length or 
 #temp variable names
-    wrap_val = 0
-    right_val = 0
-
-    #hmm maybe we aren't iterating properly, in some way
-
+    y_val = 0
+    x_val = 0
 
     #metadata starts below each graph, and from the top left anchor of a given graph the first available cell below the graph is 13 cells down
-    metadata_start_point = excel_cell_shifter(graph_anchor, x_shift = wrap_val, y_shift = 13 + right_val)
+    metadata_start_point = excel_cell_shifter(graph_anchor, x_shift = y_val, y_shift = 14 + x_val)
 
 #should only iterate for as many months there are
     for i in range(0, len(PDF.pdf_month_list)):
@@ -318,27 +327,38 @@ def graph_metadata_adder(ws, graph_anchor, media_type_indice, graph_length=None,
 
 
         #these use excel_cell_shifter() to determine where to be relative to the start of where metadata should be printed below each graph
-        inv_min_loc = excel_cell_shifter(metadata_start_point, y_shift = 1)
-        mon_rat_loc = excel_cell_shifter(metadata_start_point, y_shift = 2)
+        mon_loc = excel_cell_shifter(metadata_start_point, x_shift = x_val, y_shift = y_val)
 
+
+        inv_min_loc = excel_cell_shifter(metadata_start_point, x_shift = x_val, y_shift = 1 + y_val)
+        mon_rat_loc = excel_cell_shifter(metadata_start_point, x_shift = x_val, y_shift = 2 + y_val)
+
+        ws[mon_loc] = PDF.pdf_month_list[i]
         ws[inv_min_loc] = "Inv/Min"
+
+        #this one looks better but it causes the % changes to break
+        #ws[mon_rat_loc] = str(PDF.pdf_monthly_inv_ratios[i][media_type_indice] * 100) + "%"
         ws[mon_rat_loc] = PDF.pdf_monthly_inv_ratios[i][media_type_indice]
 
         if PDF.pdf_month_list[i] != "January":
-            ratio_dif_loc = excel_cell_shifter(metadata_start_point, y_shift = 3)
+            #the cell name for where the percentage change against last month will be mapped to
+            ratio_dif_loc = excel_cell_shifter(metadata_start_point, x_shift = x_val, y_shift = 3 + y_val)
             try:
-                ws[ratio_dif_loc] = str(round((cur_month_ratio / pre_month_ratio), 2)) + "%"
+                percent_change = str(round(((cur_month_ratio / pre_month_ratio) - 1) * 100, 2)) + "%"
+
+                ws[ratio_dif_loc] = percent_change
             except:
-                #test
+                #this would occur if one of the month ratio's involves no media recorded
                 ws[ratio_dif_loc] = "NA"
 
+        #cur_month_ratio will be ahead of pre_month_ratio since this is declared here
         pre_month_ratio = PDF.pdf_monthly_inv_ratios[i][media_type_indice]
 
-        right_val += 1
+        x_val += 1
         #should allow for the metadata to not stack up
-        if right_val == 9:
-            wrap_val += 1
-            right_val = 0
+        if x_val == 6:
+            y_val += 3
+            x_val = 0
 
 
 #runs all excel related functions. data_scraper() has to be run first to create the PDF class with all it's PDF objects
@@ -362,3 +382,5 @@ def excel_batch_processor():
     print("Excel file complete!")
 
     #figure out how to remove the pdf files from the github repo
+
+    #i think rounding errors are accumulating in your percent changes lol
