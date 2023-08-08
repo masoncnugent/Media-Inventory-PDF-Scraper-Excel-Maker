@@ -341,7 +341,7 @@ def graph_metadata_adder(ws, graph_anchor, media_type_indice, graph_length=None,
         try:
             ws[mon_rat_loc] = round(PDF.pdf_monthly_inv_ratios[i][media_type_indice], 2)
         except:
-            ws[mon_rat_loc] = PDF.pdf_monthly_inv_ratios[i][media_type_indice]
+            ws[mon_rat_loc] = "NA"
 
         if PDF.pdf_month_list[i] != "January":
             #the cell name for where the percentage change against last month will be mapped to
