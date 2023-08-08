@@ -356,8 +356,8 @@ def graph_metadata_adder(ws, graph_anchor, media_type_indice, graph_length=None,
 
         x_val += 1
         #should allow for the metadata to not stack up
-        if x_val == 6:
-            y_val += 3
+        if x_val == 9:
+            y_val += 4
             x_val = 0
 
 
