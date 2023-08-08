@@ -13,37 +13,43 @@ class PDF:
 
     #instance variables and functions
     def __init__(self, unformatted_data, filename):
-        #instance variables
+        #used once in end_functions() in reference to PDF.pdf_id, since the final pdf will have a self.id value one less than PDF.pdf_id
         self.id = PDF.pdf_id
-        #filename portion is the 0th index as a string
+        #filename portion is the 0th index of the pdf's data, stored here as a string
         self.filename = filename
 
-        #determines the month
+        #determines the month the pdf applies to. This is used for analytics on each month
         self.month = self.month_determiner()
 
+        #variables that store what the pdf is missing, in reference to an ideal pdf with all media types listed
+        #these are used to determine what lines need to be added to each pdf instance, so it's data can be reliably printed onto the resulting Excel document
         self.FTM_400S_Needed = False
         self.FTM_1000_Needed = False
         self.DFD_1000_Needed = False
         self.Remove_OD = False
-        #data portion is the 1st index as a list of all the lines
+        #data portion is the 1st index of the formatted pdf as a list of all the lines
         self.data = self.data_correcter(unformatted_data)
-        #also checks for errors with PDFs of invalid length after correction
+        #if every pdf has the same length, this value can be used to increment over self.data, self.inventory_list, self.minimum_list, and self.inv_ratio_list_full_float
         PDF.pdf_length = self.length_checker()
+        #solely used to check for cases where a given pdf does not have the same length as other pdfs, which throws an error
+        pdf_length = self.length_checker()
 
+        #nothing formally stores the meaning of where each recorded value is put in self.inventory_list, but it is built from first media type, SCDB 100, to last, Saline P80
+        #a dictionary might be a better implementation, unless the types included aren't known...
         self.inventory_list = self.inventory_list_maker()
 
+        #like for self.inventory_list, there is nothing that formally stores what each entry in self.minimum_list is in reference to
         self.minimum_list = self.minimum_list_maker()
 
-        #gets ratios in float and decimal form for the inventory / minimum
+        #gets ratios in float form for accuracy, the rounding is done later after all floated values for each month are added together and divided by the number of recorded values for each month
         self.inv_ratio_list_full_float = self.inv_ratio_list_full_float_maker()
-
-        PDF.pdf_length = self.length_checker()
         
+        #the PDF class has a list which stores every pdf instance
         PDF.pdf_list.append(self)
 
         PDF.pdf_id += 1
 
-        #useful for gauging the speed of the work pc
+        #useful for approximating the speed of the work pc
         print(str(PDF.pdf_id) + " pdf's processed")
 
 
@@ -56,19 +62,12 @@ class PDF:
                 PDF.pdf_month_list.append(month_name)
             return month_name
         except:
-            raise Exception("PDF " + str(self.filename) + " has an improperly formatted filename, should be 'yy-mm-dd Media Inventory'")
+            raise Exception("PDF " + str(self.filename) + " has an improperly formatted filename, should be 'yy-mm-dd Media Inventory.pdf'")
 
 
        
     #formats the data to have functional phrases with missing media types added
     def data_correcter(self, unformatted_data):
-        #spaced_data = self.smart_splitter(unformatted_data)
-
-        #formatted_data = self.data_formatter(self, spaced_data)
-
-        #return formatted_data
-    
-        #some of the passings of 'self' might be unneeded
         return self.data_formatter(self.smart_splitter(unformatted_data))
 
 
@@ -90,6 +89,7 @@ class PDF:
 
         if PDF.pdf_length != 0:
             if PDF.pdf_length != self_length:
+                #every pdf should have the same length so the data printed into Excel is properly referenced with respect to every media type
                 raise Exception("PDF " + str(self.filename) + " has a formatting which gave it a different length from the others")
 
         return self_length
@@ -98,38 +98,48 @@ class PDF:
 
     def inventory_list_maker(self):
         inventory_list = []
+
+        #the first line of each pdf will have "Inv" at the end of it. Cases where "Inv" is at the end of another line, for whatever reason that might be, should still be handled as errors
+        first_line = True
         for pdf_line in self.data:
 
             try:
                 #adds to the inventory list only if the line has a integer at the end, which would be the inventory on an ideally formatted pdf
                 inventory_list.append(int(pdf_line[-1]))
             
+            #lines without inventory values at the end should either have a string added to inventory list in it's place, to denote that no media was recorded.
+            #lines without a recognized replacement for an inventory value at the end, however, should raise an error as the validity of their addition to the list of cases where an empty string should be added is ambiguous
             except:
-                if pdf_line[-1] == "":
+                if pdf_line[-1] == "" or pdf_line[-1] == "OD" or first_line:
                     inventory_list.append("")
 
-                elif pdf_line[-1] == "OD":
-                    inventory_list.append("")
-                
-                continue
-        
+                else:
+                    raise Exception("PDF " + str(self.filename) + " has a formatting which gave it a line without an inventory value stored at the end of it.\nThis line is " + str(pdf_line))
+      
+            first_line = False
+
         return inventory_list
     
 
 
     def minimum_list_maker(self):
         minimum_list = []
-        for line in self.data:
+        first_line = True
+        for pdf_line in self.data:
             #doesn't add the first line of each pdf
-            if line[-3] == "Minimum":
+            if first_line:
                 continue
             try:
             #turns the minimum value into an integer if there is a minimum value present
-                minimum_list.append(int(line[-3]))
+                minimum_list.append(int(pdf_line[-3]))
             
             except:
-                if line[-3] == "":
+                if pdf_line[-3] == "":
                     minimum_list.append("")
+                else:
+                    raise Exception("PDF " + str(self.filename) + " has a formatting which didn't give it a minimum value 2 places to the left of the end of the line.\nThis line is " + str(pdf_line))
+            
+            first_line = False
 
         return minimum_list
     
@@ -260,8 +270,10 @@ class PDF:
 
 
     #turns whole lines of the pdf into a list of separate strings, each of which should hold an appropriate phrase. EX: '45 trays (5)' is a phrase, as are '165(5)' and '100'
+    #as can be seen by these examples, a 'phrase' is of variable length, which is why this function needs rules for determining what is a phrase
+    #this was done so each line takes up the same number of Excel cells, so that things like inventory and minimum values can be accessed correctly both in Python and in Excel graph cell references
     #reading ahead of a phrase is needed to determine how long each phrase should be
-    #each pdf that is scraped is a list containing each line of the pdf, which is also a list, hence the input parameter
+    #each pdf that is scraped is a list containing each line of the pdf, which is also a list holding the strings for each piece of data surrounded by " "s, hence the input parameter being called list_of_lists
     def smart_splitter(self, list_of_lists):
         final_lists = []
 
@@ -312,14 +324,16 @@ class PDF:
 
 
 
-    #will add every media type to each pdf's Excel representation, even if no media of that type were listed on the pdf for the date. Takes from the data processed by smart_splitter(). Only adds 400-S FTM, 1000 FTM, and DFD as well as removing OD lines because too much more would vastly overcomplicate this.
+    #will add every media type to each pdf's data, even if no media of that type were listed on the pdf for the date. Takes from the data processed by smart_splitter(). Only adds 400-S FTM, 1000 FTM, and DFD as well as removing OD lines because too much more would vastly overcomplicate this.
     #since so much of this is hard-coded, there is the assumption that the pdf will remain untouched in the future. In the event that it isn't, this is where changes should most likely be made first.
     def data_formatter(self, spaced_data):
         
-        #a shallow copy was needed to prevent the loop running indefinitely
+        #a shallow copy is needed to prevent the loop running indefinitely
         spaced_data_copy = spaced_data.copy()
 
-        #knowing where 1000 FTM and 1000 DFD should be on an ideally formatted pdf is what is used to reference where they should be added. Sublist_count tracks what line of the pdf we should add to on the Excel representation
+        #knowing where 400-S FTM, 1000 FTM, and 1000 DFD should be on an ideally formatted pdf is what is used to reference where they should be added. Sublist_count tracks what line of the pdf we should add to for filling in the missing media type data
+        #sublist_mod adjusts for the indexing of each pdf line changing on pdfs with multiple missing media types
+        #the 'ideally formatted pdf' comes from observing where each media type is placed in pdfs that have the given media type. The placements never vary, and shouldn't in the future
         sublist_count = 0
         sublist_mod = 0
 
@@ -349,6 +363,7 @@ class PDF:
             #adds 1000 DFD
             elif sublist_count == 28 - sublist_mod:
                 #the or condition is given because the minimum for DFD was changed on 06/26/23 from 136 to 99
+                #volume can't be referenced instead, because DFD 1000 is surrounded by other 1000mL media types
                 if sub_list[3] == "136" or sub_list[3] == "99":
                     sublist_count += 1
 
@@ -357,16 +372,16 @@ class PDF:
                     sublist_count += 1
                     sublist_mod == 1
             
-            #removes the 'OD' or 'On Demand' line from previous pdfs
+            #removes the 'OD,' or 'On Demand,' line at the end of older pdfs
+            #each pdf is assumed to be a certain length at this point, but PDF.pdf_length cannot be made yet to check if each pdf has the correct number of lines
+            #check if sublist_count ever reaches 34 for a normal pdf...
             elif sublist_count == 34 - sublist_mod:
                 if sub_list[0] == "OD=":
                     self.Remove_OD = True
-        
 
 
         #runs after all the other data has been added, so that the .insert() method knows where to add 1000 FTM and 1000 DFD based on where they would be in an ideally formatted pdf
         #the final value added, "", indicates that no media for this media type was recorded on this date
-        #EVERYTHING AFTER THE SIZE HAS BEEN MADE BLANK SEE IF THIS CAUSES ANY ERRORS
         if self.FTM_400S_Needed:
             spaced_data_copy.insert(11, ["400-S", "", "", "", ""])
 
