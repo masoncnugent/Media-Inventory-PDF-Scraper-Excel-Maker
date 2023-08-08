@@ -202,7 +202,7 @@ def excel_graph_maker(wb, ws):
 
             #the '17' should be the height of each graph
             #graphs should be offset more or less depending on how much metadata is beneath them
-            if len(PDF.pdf_month_list) > 6: 
+            if len(PDF.pdf_month_list) > 9: 
                 graph_row_offset += 23
             else:
                 graph_row_offset += 19
