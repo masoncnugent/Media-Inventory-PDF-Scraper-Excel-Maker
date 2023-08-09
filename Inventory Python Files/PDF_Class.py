@@ -231,10 +231,11 @@ class PDF:
 
                 r_i += 1
 
-            #reading ahead is done whenever a space is encountered, since it could indicate a meaningful addition to phrase
+            #the read is cut off and considered to be a special case once the word is completed, as denoted by a " " following it
+            #since so much of this is hard-coded, there is the assumption that the ideal pdf will remain untouched in the future. In the event that it isn't, this is where changes would need to be made for adding new functional phrase cases that future pdfs might have
             elif list[r_i] == " ":
                 if (
-                    #covers the two special case categories where read_ahead should be added to phrase
+                    #covers the two special case lists where read should be added to phrase
                     read[-1] in special_case_list1
                     or read[-2:] in special_case_list2
 
@@ -245,6 +246,8 @@ class PDF:
                     #adds Saline P80 to the list of special cases, since having '80' be a special case would cause issues
                     or len(read) == 3
                     and read == "P80"
+
+                    #these appear to be for additional special cases... find out what they're for
                     or (len(read) == 3 and read[-1] == ")")
                     or (len(read) == 4 and read[-1] == ")")
                 ):
@@ -257,27 +260,24 @@ class PDF:
                         future_read = read + " " + future_read
                         return future_read
                         
-                    #cuts off the read at the end of the scraped data for this line (check) 
+                    #returns the read when it is a special case but future_read was not, denoting that the read plus the initial phrase in smart_splitter() make up the whole conjoined_phrase
                     else:
                         return read
-                #returns None if a special read is not seen 
+                #returns None if a special read is not seen after the phrase from smart_splitter()
                 else:
                     return None
                     
-        #this might not have to be written explicitly
-        return None
-
 
 
     #turns whole lines of the pdf into a list of separate strings, each of which should hold an appropriate phrase. EX: '45 trays (5)' is a phrase, as are '165(5)' and '100'
-    #as can be seen by these examples, a 'phrase' is of variable length, which is why this function needs rules for determining what is a phrase
-    #this was done so each line takes up the same number of Excel cells, so that things like inventory and minimum values can be accessed correctly both in Python and in Excel graph cell references
-    #reading ahead of a phrase is needed to determine how long each phrase should be
-    #each pdf that is scraped is a list containing each line of the pdf, which is also a list holding the strings for each piece of data surrounded by " "s, hence the input parameter being called list_of_lists
-    def smart_splitter(self, list_of_lists):
+    #as can be seen by these examples, a 'phrase' is of variable length, which is why this function needs rules for determining what constitutes a phrase
+    #but why phrases in the first place? Phrases were made so each line takes up the same number of Excel cells, so things like inventory and minimum values can be accessed correctly both in Python and in Excel graph cell references
+    #reading ahead of a given phrase is needed to determine how long each phrase should be. Once you find something ahead of the existing phrase that would does not meet phrase criteria, return None. Until then, recursively call the same function, indexed ahead of the space following the existing phrase
+    #each pdf that is scraped is a list containing each line of the pdf, which holds each line as a separate string
+    def smart_splitter(self, unformatted_data):
         final_lists = []
 
-        for list in list_of_lists:
+        for list in unformatted_data:
             split_list = []
             #'phrase' is used as the word to designate what is read, as it could be multiple words long
             phrase = ""
@@ -287,10 +287,12 @@ class PDF:
             for i in range(len(list)):
 
                 #causes i to not iterate over what's already been read by read_ahead()
+                #delay is only incremented when read_ahead() has added the characters ahead of a phrase into that same phrase
+                #characters read but not added to the phrase are not added to delay, as they could still be part of their own phrase and must have read_ahead() called on them
                 if delay > 0:
                     delay -= 1
 
-                    #resets phrase when reading ahead has been done
+                    #resets phrase when reading ahead has been done, so the next phrase can start as an empty string
                     phrase = ""
 
                 elif list[i] != " ":
@@ -300,7 +302,7 @@ class PDF:
                 elif list[i] == " ":
                     text_ahead = self.read_ahead(list, i)
 
-                    #adds the text ahead of a given word, should that text be a special case. read_ahead() is recursively called so long as special cases are encountered, so the conjoined_phrase is as long as possible
+                    #adds the text ahead of a given phrase, should that text be a special case that designates that it should be added to the phrase
                     if text_ahead != None:
                         conjoined_phrase = phrase + " " + text_ahead
 
@@ -309,12 +311,13 @@ class PDF:
                         #delays i beyond the full extent of what's already been read
                         delay = len(text_ahead) + 1
 
-                    #simply adds phrase to split_list, should no special cases be found ahead of it
+                    #simply adds phrase to split_list, should no special cases be found ahead of it. Every phrase, except for the last, ends with a None return by read_ahead() and this else block being executed
                     else:
                         split_list.append(phrase)
                         phrase = ""
 
-            #this line accounts for the final phrase, if it wasn't already part of a special case
+            #this line accounts for the final phrase, if it wasn't already part of a special case that incremented delay far enough where read_ahead() wasn't called again
+            #wait if it was part of a special case would read_ahead()'s attempt to increment past it break things???
             split_list.append(phrase)
 
             #adds each list to the final_lists, which is a list containing each line list with its multi-word phrases
@@ -324,8 +327,20 @@ class PDF:
 
 
 
-    #will add every media type to each pdf's data, even if no media of that type were listed on the pdf for the date. Takes from the data processed by smart_splitter(). Only adds 400-S FTM, 1000 FTM, and DFD as well as removing OD lines because too much more would vastly overcomplicate this.
-    #since so much of this is hard-coded, there is the assumption that the pdf will remain untouched in the future. In the event that it isn't, this is where changes should most likely be made first.
+#one potential optimization
+#when read_ahead() reads ahead and finds that the word ahead of the phrase is not a special case, this word can still be returned to smart_splitter as phrase = read with phrase = "" bypassed and delay incremented appropriately
+#the only issue is that bypassing phrase = "" might introduce additional time in the consideration of when to do so. You could test different implementations
+
+
+
+#also might want to separate the terms PDF as the class representation and the actual pdfs you're working with
+
+
+
+    #at this point each line of the data from a pdf contains functional phrases, but many pdfs are missing certain media types.
+    #data_formatter() adds every media type to each pdf's data, even if no media of that type were listed on the pdf for a given date. Takes from the data processed by smart_splitter(). Only adds 400-S FTM, 1000 FTM, and DFD as well as removing OD lines because too much more would vastly overcomplicate this.
+    #since so much of this is hard-coded, there is the assumption that the ideal pdf will remain untouched in the future. In the event that it isn't, this is where changes would need to be made for adding new media types to each pdf's self.pdf_data
+    #identifying ways to bypass this function would save some time, for pdfs with already ideal formatting. Length can't be used as a bypass condition, as an incorrectly formatted pdf could deceptively have the same number of lines as an ideally formatted one
     def data_formatter(self, spaced_data):
         
         #a shallow copy is needed to prevent the loop running indefinitely
@@ -380,7 +395,7 @@ class PDF:
                     self.Remove_OD = True
 
 
-        #runs after all the other data has been added, so that the .insert() method knows where to add 1000 FTM and 1000 DFD based on where they would be in an ideally formatted pdf
+        #runs after all the other data has been added, so that the .insert() method knows where to add 400-S FTM, 1000 FTM, and 1000 DFD based on where they would be in an ideally formatted pdf
         #the final value added, "", indicates that no media for this media type was recorded on this date
         if self.FTM_400S_Needed:
             spaced_data_copy.insert(11, ["400-S", "", "", "", ""])
@@ -398,6 +413,7 @@ class PDF:
 
 
 
+#reads the actual pdfs in the microsoft folder (re-word)
 def data_scraper(pdf_location):
     pdf_count = 0
 
