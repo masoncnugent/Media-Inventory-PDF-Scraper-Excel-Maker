@@ -385,5 +385,3 @@ def excel_batch_processor():
     print("Excel file complete!")
 
     #figure out how to remove the pdf files from the github repo
-
-    #i think rounding errors are accumulating in your percent changes lol
