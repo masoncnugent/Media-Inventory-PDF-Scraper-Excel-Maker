@@ -6,6 +6,7 @@ import math
 
 from PDF_Class import PDF
 
+#utilizes openpyxl to make an Excel workbook that can hold all the pdf data and graphs
 def excel_wb_maker():
 
     # makes the excel workbook
@@ -14,18 +15,19 @@ def excel_wb_maker():
     #sets the relevant sheet of the Excel document that will be edited
     ws = wb.active
 
-    #gives the name for the resulting saved Exc el file
+    #gives the name for the resulting saved Excel file
     ws.title = "Inventory Analytics.xlsx"
 
     #this sheet stores the graphs made from the pdf data
-    wb.create_sheet("Graphs")
+    #wb.create_sheet("Graphs")
 
     return wb, ws
 
 
 
+#copies each pdfs self.data line by line on the Excel file, with a filename above each one. Includes added media types if they weren't in the original pdf
 def excel_pdf_vertical_copier(ws):
-    #allows the rows to be placed where they need to be, and allows for space in between pasted pdfs in Excel
+    #allows the rows for each pdf to be placed where they need to be, and allows for space in between pasted pdfs in Excel
     pdf_offset = 1
 
     #moves the dates where each pdf's data is collected to start at 'I2' and continue rightward
@@ -36,7 +38,8 @@ def excel_pdf_vertical_copier(ws):
         row_count = 1
 
         for row in pdf.data:
-            #adds to the rows in Excel without header entries like SCDB, FTM, etc.
+            #adds to the rows in Excel without anything under the media type column like SCDB, FTM, etc.
+            #this should already be in each pdf's data...
             if len(row) < 6:
                 row.insert(0, "")
 
@@ -385,3 +388,5 @@ def excel_batch_processor():
     print("Excel file complete!")
 
     #figure out how to remove the pdf files from the github repo
+
+    #i think rounding errors are accumulating in your percent changes lol
