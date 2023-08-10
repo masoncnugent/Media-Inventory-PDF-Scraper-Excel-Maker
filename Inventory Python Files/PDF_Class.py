@@ -100,6 +100,7 @@ class PDF:
         inventory_list = []
 
         #the first line of each pdf will have "Inv" at the end of it. Cases where "Inv" is at the end of another line, for whatever reason that might be, should still be handled as errors
+        #first_line was made in place of making "Inv" a condition in the Except if case for this reason
         first_line = True
         for pdf_line in self.data:
 
@@ -107,7 +108,7 @@ class PDF:
                 #adds to the inventory list only if the line has a integer at the end, which would be the inventory on an ideally formatted pdf
                 inventory_list.append(int(pdf_line[-1]))
             
-            #lines without inventory values at the end should either have a string added to inventory list in it's place, to denote that no media was recorded.
+            #lines without inventory values at the end should have a string added to inventory list in it's place, to denote that no media was recorded. This is different from adding 0, since this would suggest that no media was present, but it was recorded
             #lines without a recognized replacement for an inventory value at the end, however, should raise an error as the validity of their addition to the list of cases where an empty string should be added is ambiguous
             except:
                 if pdf_line[-1] == "" or pdf_line[-1] == "OD" or first_line:
@@ -122,6 +123,7 @@ class PDF:
     
 
 
+    #makes a list for the minimum inventory values given for the pdf running the function
     def minimum_list_maker(self):
         minimum_list = []
         first_line = True
@@ -134,6 +136,7 @@ class PDF:
                 minimum_list.append(int(pdf_line[-3]))
             
             except:
+                #not adding this empty string to minimum_list would cause minimum_list to be indexed improperly in Excel related functions
                 if pdf_line[-3] == "":
                     minimum_list.append("")
                 else:
@@ -145,10 +148,19 @@ class PDF:
     
 
 
-    #determines the ratio of inventory to minimum for each media type in the pdf
+    #determines the ratio of inventory / minimum for each media type in the pdf
+    #one known issue in this data representation is that media prep tries to stay a certain number of lots above the minimum. This doesn't change as the minimum changes over time, as we only make media when inventory dips below the minimum
+    #therefore, if we hypothetically try to stay 2 lots above minimum, and say the minimum for a given media type is 10, then we'd have 12/10 or a ratio of 1.2
+    #if the minimum jumped up to 20, we'd still stay 2 lots above it, and would then have 22/20 or a ratio of 1.1. This month would be recorded as decreasing the ratio by 8.3 repeating percent, showing ratios to be a non-ideal data representation when the minimum value changes between months
+    #a more ideal system would be inv - min / lots, so it's lots above or below minimum. Determining lot size would be difficult, as the formatting (check) for this column changes between pdfs
     def inv_ratio_list_full_float_maker(self):
+
+        if len(self.inventory_list) != len(self.minimum_list):
+            raise Exception("The length of self.inventory_list is " + str(len(self.inventory_list)) + " while self.minimum_list is " + str(len(self.minimum_list)) + " items long. These do not match.")
+
         #utilizes floats
         full_float_inv_ratio_list = []
+        #this indexing works because self.inventory_list is the same length as self.minimum_list
         for i in range(0, len(self.inventory_list)):
 
             try:
@@ -413,11 +425,10 @@ class PDF:
 
 
 
-#reads the actual pdfs in the microsoft folder (re-word)
+#reads the actual pdfs in the folder where they were specified to exist in directory_changer()
 def data_scraper(pdf_location):
     pdf_count = 0
 
-    #looks for pdfs in the current directory given to find media inventory pdfs
     for filename in os.listdir(pdf_location):
         if filename[-4:] == ".pdf":
             pdf_count += 1
@@ -425,19 +436,22 @@ def data_scraper(pdf_location):
             #uses imported functions from PyPDF2 to read from pdfs
             reader = PdfReader(open(filename, "rb"))
 
-            #this is the raw line by line data scraped from each pdf as a list containing each line, which is also a list
+            #this is the raw line by line data scraped from each pdf as a list containing each line, each of which is a string containing all the info with spaces in between words
             unformatted_data = []
 
-            #every media pdf should be one page long, this could cause issues should that requirement not be met. (UPDATE)
-            for i in range(0, len(reader.pages)):
-                selected_page = reader.pages[i]
+            if len(reader.pages) > 1:
+                Exception("PDF " + filename + " contains more than one page of data. It should be only one page.")
 
-                raw_text = selected_page.extract_text()
+            selected_page = reader.pages[0]
 
-                #takes each line of the pdf as a separate string, not separated by meaningful phrases
-                unformatted_data += raw_text.splitlines()
+            raw_data = selected_page.extract_text()
+
+            #makes each line of the pdf into a separate string, not separated by meaningful phrases, and appends them to unformatted_data
+            #the fact that words haven't been combined into phrases is what makes this data 'unformatted.'
+            unformatted_data += raw_data.splitlines()
 
             PDF(unformatted_data, filename)
     
     #runs functions related to when all PDF data is inputted
+    #these functions collect metadata about the whole of the pdf data
     PDF.end_functions()
