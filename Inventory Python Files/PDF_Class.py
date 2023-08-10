@@ -31,7 +31,7 @@ class PDF:
         self.data = self.data_correcter(unformatted_data)
         #if every pdf has the same length, this value can be used to increment over self.data, self.inventory_list, self.minimum_list, and self.inv_ratio_list_full_float
         PDF.pdf_length = self.length_checker()
-        #solely used to check for cases where a given pdf does not have the same length as other pdfs, which throws an error
+        #solely used to check for cases where a given pdf does not have the same number of lines as other pdfs, which throws an error
         pdf_length = self.length_checker()
 
         #nothing formally stores the meaning of where each recorded value is put in self.inventory_list, but it is built from first media type, SCDB 100, to last, Saline P80
@@ -111,9 +111,13 @@ class PDF:
             #lines without inventory values at the end should have a string added to inventory list in it's place, to denote that no media was recorded. This is different from adding 0, since this would suggest that no media was present, but it was recorded
             #lines without a recognized replacement for an inventory value at the end, however, should raise an error as the validity of their addition to the list of cases where an empty string should be added is ambiguous
             except:
-                if pdf_line[-1] == "" or pdf_line[-1] == "OD" or first_line:
-                    inventory_list.append("")
+                if first_line:
+                    first_line = False
+                    continue
 
+                elif pdf_line[-1] == "" or pdf_line[-1] == "OD":
+                    inventory_list.append("")
+                
                 else:
                     raise Exception("PDF " + str(self.filename) + " has a formatting which gave it a line without an inventory value stored at the end of it.\nThis line is " + str(pdf_line))
       
@@ -128,14 +132,15 @@ class PDF:
         minimum_list = []
         first_line = True
         for pdf_line in self.data:
-            #doesn't add the first line of each pdf
-            if first_line:
-                continue
             try:
             #turns the minimum value into an integer if there is a minimum value present
                 minimum_list.append(int(pdf_line[-3]))
             
             except:
+                #doesn't add the first line of each pdf as it has no inventory
+                if first_line:
+                    first_line = False
+                    continue
                 #not adding this empty string to minimum_list would cause minimum_list to be indexed improperly in Excel related functions
                 if pdf_line[-3] == "":
                     minimum_list.append("")
@@ -364,8 +369,19 @@ class PDF:
         sublist_count = 0
         sublist_mod = 0
 
+
+        #this will require a hefty re-write, but let's attempt to have every 'Media Type' column filled in with "" if nothing is listed
+
+
         for sub_list in spaced_data_copy:
             sublist_count += 1
+            media_type_col_space = False
+
+            #test code
+            #permanent loop
+            if len(sub_list) < 6 and media_type_col_space == False:
+                spaced_data_copy.insert(0, "")
+                media_type_col_space = True
 
             #adds 400-S FTM
             if sublist_count == 12 - sublist_mod:
@@ -409,14 +425,16 @@ class PDF:
 
         #runs after all the other data has been added, so that the .insert() method knows where to add 400-S FTM, 1000 FTM, and 1000 DFD based on where they would be in an ideally formatted pdf
         #the final value added, "", indicates that no media for this media type was recorded on this date
+
+        #ADDED THE FIRST QUOTATIONS
         if self.FTM_400S_Needed:
-            spaced_data_copy.insert(11, ["400-S", "", "", "", ""])
+            spaced_data_copy.insert(11, ["", "400-S", "", "", "", ""])
 
         if self.FTM_1000_Needed:
-            spaced_data_copy.insert(13, ["1000", "", "", "", ""])
+            spaced_data_copy.insert(13, ["", "1000", "", "", "", ""])
 
         if self.DFD_1000_Needed:
-            spaced_data_copy.insert(25, ["DFD","1000", "", "", "", ""])
+            spaced_data_copy.insert(25, ["", "DFD","1000", "", "", "", ""])
 
         if self.Remove_OD:
             spaced_data_copy.pop(-1)
