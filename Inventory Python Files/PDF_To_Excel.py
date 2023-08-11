@@ -38,10 +38,6 @@ def excel_pdf_vertical_copier(ws):
         row_count = 1
 
         for row in pdf.data:
-            #adds to the rows in Excel without anything under the media type column like SCDB, FTM, etc.
-            #this should already be in each pdf's data...
-            if len(row) < 6:
-                row.insert(0, "")
 
             col_count = 1
 
@@ -52,7 +48,13 @@ def excel_pdf_vertical_copier(ws):
 
                 #this line is for debug purposes, but the one below it takes the data from a row on the formatted pdf data and puts it in Excel.
                 row_cell = char + str(row_count + pdf_offset)
-                ws[row_cell] = row_data
+
+                #this is so the data in Excel is not inputted as a string if it can be an integer, solely to remove the green triangles in Excel.
+                try:
+                    ws[row_cell] = int(row_data)
+                
+                except:
+                    ws[row_cell] = row_data
 
             row_count += 1
 
@@ -87,19 +89,19 @@ def excel_media_type_adder(ws):
     #this allows for the minimum columns to exist alongside the data for each media type
     min_offset = 0
     for i in range(3, 11):
-        ws[get_column_letter(i + 6 + min_offset) + "2"] = ws["A3"].value + " " + ws["B" + str(i)].value
-        PDF.pdf_media_type_list.append(ws["A3"].value + " " + ws["B" + str(i)].value)
+        ws[get_column_letter(i + 6 + min_offset) + "2"] = ws["A3"].value + " " + str(ws["B" + str(i)].value)
+        PDF.pdf_media_type_list.append(ws["A3"].value + " " + str(ws["B" + str(i)].value))
         min_offset += 1
 
     for i in range(11, 19):
-        ws[get_column_letter(i + 6 + min_offset) + "2"] = ws["A11"].value + " " + ws["B" + str(i)].value
-        PDF.pdf_media_type_list.append(ws["A11"].value + " " + ws["B" + str(i)].value)
+        ws[get_column_letter(i + 6 + min_offset) + "2"] = ws["A11"].value + " " + str(ws["B" + str(i)].value)
+        PDF.pdf_media_type_list.append(ws["A11"].value + " " + str(ws["B" + str(i)].value))
         min_offset += 1
 
     #the end is dynamically encoded to match the length of each PDF
     for i in range(19, PDF.pdf_length + 2):
-        ws[get_column_letter(i + 6 + min_offset) + "2"] = ws["A" + str(i)].value + " " + ws["B" + str(i)].value
-        PDF.pdf_media_type_list.append(ws["A" + str(i)].value + " " + ws["B" + str(i)].value)
+        ws[get_column_letter(i + 6 + min_offset) + "2"] = ws["A" + str(i)].value + " " + str(ws["B" + str(i)].value)
+        PDF.pdf_media_type_list.append(ws["A" + str(i)].value + " " + str(ws["B" + str(i)].value))
         min_offset += 1
 
     #adds the words "Media Type" and "Minimum" above their respective column
