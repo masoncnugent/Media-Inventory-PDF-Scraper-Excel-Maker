@@ -1,5 +1,6 @@
 import os
 import calendar
+import copy
 from PyPDF2 import PdfReader
 class PDF:
     #class variables
@@ -90,7 +91,7 @@ class PDF:
         if PDF.pdf_length != 0:
             if PDF.pdf_length != self_length:
                 #every pdf should have the same length so the data printed into Excel is properly referenced with respect to every media type
-                raise Exception("PDF " + str(self.filename) + " has a formatting which gave it a different length from the others")
+                raise Exception("PDF " + str(self.filename) + " has a formatting which gave it a length of " + str(self_length) + " while the others had a length of " + str(PDF.pdf_length))
 
         return self_length
     
@@ -355,73 +356,76 @@ class PDF:
 
 
     #at this point each line of the data from a pdf contains functional phrases, but many pdfs are missing certain media types.
-    #data_formatter() adds every media type to each pdf's data, even if no media of that type were listed on the pdf for a given date. Takes from the data processed by smart_splitter(). Only adds 400-S FTM, 1000 FTM, and DFD as well as removing OD lines because too much more would vastly overcomplicate this.
+    #data_formatter() adds every media type to each pdf's data, even if no media of that type were listed on the pdf for a given date. Takes from the data processed by smart_splitter(). Only adds 400-S FTM, 1000 FTM, and DFD as well as removing OD lines because too much more would vastly overcomplicate this
     #since so much of this is hard-coded, there is the assumption that the ideal pdf will remain untouched in the future. In the event that it isn't, this is where changes would need to be made for adding new media types to each pdf's self.pdf_data
     #identifying ways to bypass this function would save some time, for pdfs with already ideal formatting. Length can't be used as a bypass condition, as an incorrectly formatted pdf could deceptively have the same number of lines as an ideally formatted one
     def data_formatter(self, spaced_data):
         
-        #a shallow copy is needed to prevent the loop running indefinitely
-        spaced_data_copy = spaced_data.copy()
+        #a deep copy is needed so changes can be made to spaced_data_copy, while iterating through spaced_data, without affecting spaced data in any way
+        spaced_data_copy = copy.deepcopy(spaced_data)
 
-        #knowing where 400-S FTM, 1000 FTM, and 1000 DFD should be on an ideally formatted pdf is what is used to reference where they should be added. Sublist_count tracks what line of the pdf we should add to for filling in the missing media type data
-        #sublist_mod adjusts for the indexing of each pdf line changing on pdfs with multiple missing media types
+        #knowing where 400-S FTM, 1000 FTM, and 1000 DFD should be on an ideally formatted pdf is what is used to reference where they should be added. Sublist_count tracks makes sure comparisons for whether a media type is or isn't present is always done on the appropriate line, by adjusting for pdfs without 
+        #space_offset adjusts for the indexing of each line on spaced_data changing on pdfs with multiple missing media types
         #the 'ideally formatted pdf' comes from observing where each media type is placed in pdfs that have the given media type. The placements never vary, and shouldn't in the future
         sublist_count = 0
-        sublist_mod = 0
+        space_offset = 1
 
 
         #this will require a hefty re-write, but let's attempt to have every 'Media Type' column filled in with "" if nothing is listed
 
 
-        for sub_list in spaced_data_copy:
+        #as strange as it is, a copy of spaced_data_copy needed to be made to add to spaced_data_copy without causing an infinite loop
+        #if you update the original it updates the copy, you have to update the copy
+        for sub_list in spaced_data:
             sublist_count += 1
-            media_type_col_space = False
+            #print(sublist_count)
 
-            #test code
-            #permanent loop
-            if len(sub_list) < 6 and media_type_col_space == False:
-                spaced_data_copy.insert(0, "")
-                media_type_col_space = True
+            if len(sub_list) < 6:
+                try:
+                    spaced_data_copy[sublist_count - space_offset].insert(0, "")
+                except:
+                    #in the case of the "OD" line on the bottom of some pdfs, this is run
+                    pass
 
             #adds 400-S FTM
-            if sublist_count == 12 - sublist_mod:
+            if sublist_count == 12:
+                #since this sub_list is from a copy of spaced_data_copy, it doesn't have "" at its first index
                 if sub_list[0] == "400-S":
-                    sublist_count += 1
+                    pass
                 
                 else:
                     self.FTM_400S_Needed = True
                     sublist_count += 1
-                    sublist_mod += 1
+                    space_offset += 1
 
             #adds 1000 FTM
-            elif sublist_count == 15 - sublist_mod:
+            elif sublist_count == 14:
                 if sub_list[0] == "1000":
-                    sublist_count += 1
+                    pass
                     
                 else:
                     self.FTM_1000_Needed = True
                     sublist_count += 1
-                    sublist_mod += 1
+                    space_offset += 1
             
             #adds 1000 DFD
-            elif sublist_count == 28 - sublist_mod:
+            elif sublist_count == 26:
                 #the or condition is given because the minimum for DFD was changed on 06/26/23 from 136 to 99
                 #volume can't be referenced instead, because DFD 1000 is surrounded by other 1000mL media types
-                if sub_list[3] == "136" or sub_list[3] == "99":
-                    sublist_count += 1
+                if sub_list[0] == "DFD":
+                    pass
 
                 else:
                     self.DFD_1000_Needed = True
                     sublist_count += 1
-                    sublist_mod == 1
+                    space_offset += 1
             
             #removes the 'OD,' or 'On Demand,' line at the end of older pdfs
             #each pdf is assumed to be a certain length at this point, but PDF.pdf_length cannot be made yet to check if each pdf has the correct number of lines
             #check if sublist_count ever reaches 34 for a normal pdf...
-            elif sublist_count == 34 - sublist_mod:
+            elif sublist_count == 32:
                 if sub_list[0] == "OD=":
                     self.Remove_OD = True
-
 
         #runs after all the other data has been added, so that the .insert() method knows where to add 400-S FTM, 1000 FTM, and 1000 DFD based on where they would be in an ideally formatted pdf
         #the final value added, "", indicates that no media for this media type was recorded on this date
@@ -434,7 +438,7 @@ class PDF:
             spaced_data_copy.insert(13, ["", "1000", "", "", "", ""])
 
         if self.DFD_1000_Needed:
-            spaced_data_copy.insert(25, ["", "DFD","1000", "", "", "", ""])
+            spaced_data_copy.insert(25, ["DFD", "1000", "", "", "", ""])
 
         if self.Remove_OD:
             spaced_data_copy.pop(-1)
@@ -473,3 +477,9 @@ def data_scraper(pdf_location):
     #runs functions related to when all PDF data is inputted
     #these functions collect metadata about the whole of the pdf data
     PDF.end_functions()
+
+
+    #NOW THAT ALL PDFS ARE FORMATTED PROPERLY IN SELF.DATA, THE NUMBER OF INV TO A LOT CAN BE REFERENCED
+    #INV - MIN / LOT COUNT IS A PERFECT DATA ANALYSIS POINT, AS IT'S THE NUM OF LOTS ABOVE MINIMUM, UNAFFECTED BY RISING MINIMUM LEVELS
+
+    #I THINK PARTIALLY INCOMPLETE MONTHS STILL GIVE WEIRD DATA RATIOS
