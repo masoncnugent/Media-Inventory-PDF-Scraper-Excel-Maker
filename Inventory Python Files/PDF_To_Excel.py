@@ -339,7 +339,7 @@ def graph_metadata_adder(ws, graph_anchor, media_type_indice, graph_length=None,
         mon_rat_loc = excel_cell_shifter(metadata_start_point, x_shift = x_val, y_shift = 2 + y_val)
 
         ws[mon_loc] = PDF.pdf_month_list[i]
-        ws[inv_min_loc] = "Inv/Min"
+        ws[inv_min_loc] = "Lots Above Min"
 
 
         #this should make the percentage differences not have rounding errors
@@ -352,6 +352,7 @@ def graph_metadata_adder(ws, graph_anchor, media_type_indice, graph_length=None,
             #the cell name for where the percentage change against last month will be mapped to
             ratio_dif_loc = excel_cell_shifter(metadata_start_point, x_shift = x_val, y_shift = 3 + y_val)
             try:
+                #this can't be int'ed in python, but it can in Excel...
                 percent_change = str(round(((cur_month_ratio / pre_month_ratio) - 1) * 100, 2)) + "%"
 
                 ws[ratio_dif_loc] = percent_change
