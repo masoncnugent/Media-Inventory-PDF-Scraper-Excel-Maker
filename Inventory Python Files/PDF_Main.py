@@ -15,7 +15,7 @@ def directory_changer():
     #return os.chdir(r"P:\Public\Microbiology\Media Prep\Media Inventory\2023")
 
     #work version upstairs
-    return os.chdir(r"C:\Users\MCN2226\inventory speed test\Inventory Files")
+    #return os.chdir(r"C:\Users\MCN2226\inventory speed test\Inventory Files")
 
     #return os.chdir(r"C:\Users\MCN2226\Documents\inventory test")
 
@@ -23,7 +23,7 @@ def directory_changer():
     #return os.chdir(r"C:\Users\Mason\Documents\NAMSA Test\Inventory")
 
     #home laptop version
-    #return os.chdir(r"C:\Users\mason\OneDrive\Documents\Python Projects\Inventory Files")
+    return os.chdir(r"C:\Users\mason\OneDrive\Documents\Python Projects\Inventory Files")
 
 
 
