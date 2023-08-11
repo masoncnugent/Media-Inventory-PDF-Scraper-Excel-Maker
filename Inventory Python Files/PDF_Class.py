@@ -42,6 +42,9 @@ class PDF:
         #like for self.inventory_list, there is nothing that formally stores what each entry in self.minimum_list is in reference to
         self.minimum_list = self.minimum_list_maker()
 
+        #test for retrieving the number of inventory units per lot
+        self.lot_size_list = self.lot_size_list_maker()
+
         #gets ratios in float form for accuracy, the rounding is done later after all floated values for each month are added together and divided by the number of recorded values for each month
         self.inv_ratio_list_full_float = self.inv_ratio_list_full_float_maker()
         
@@ -154,6 +157,28 @@ class PDF:
     
 
 
+    def lot_size_list_maker(self):
+        lot_size_list = []
+        first_line = True
+        for pdf_line in self.data:
+
+            if first_line:
+                first_line = False
+                continue
+
+            lot_size = ""
+            for char in pdf_line[2]:
+                try:
+                    int(char)
+                    lot_size += char
+                
+                except:
+                    lot_size_list.append(int(lot_size))
+                    break
+        return lot_size_list
+    
+
+
     #determines the ratio of inventory / minimum for each media type in the pdf
     #one known issue in this data representation is that media prep tries to stay a certain number of lots above the minimum. This doesn't change as the minimum changes over time, as we only make media when inventory dips below the minimum
     #therefore, if we hypothetically try to stay 2 lots above minimum, and say the minimum for a given media type is 10, then we'd have 12/10 or a ratio of 1.2
@@ -170,7 +195,7 @@ class PDF:
         for i in range(0, len(self.inventory_list)):
 
             try:
-                full_float_inv_ratio_list.append(self.inventory_list[i] / self.minimum_list[i])
+                full_float_inv_ratio_list.append((self.inventory_list[i] - self.minimum_list[i]) / self.lot_size_list[i])
             
             except:
                 full_float_inv_ratio_list.append("")
