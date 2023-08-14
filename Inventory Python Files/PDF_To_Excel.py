@@ -2,6 +2,7 @@ from openpyxl import Workbook
 from openpyxl.utils import get_column_letter
 from openpyxl.chart import LineChart, Reference
 from openpyxl.chart.axis import DateAxis
+from openpyxl.styles import Font, PatternFill
 import math
 
 from PDF_Class import PDF
@@ -157,47 +158,73 @@ def excel_graph_maker(wb, ws):
     graph_col_offset = 8
     graph_row_offset = 0
     inv_min_offset = 0
+
+    #test variable for inputting the media l/ms into columns aside from one another
+    lots_over_min_col_offset = 0
+
+    ws["AL89"] = "Month"
+    ws["AL89"].font = Font(bold = True)
+
+    media_offset = 0
+    for media_type in PDF.pdf_media_type_list:
+        #prints "Media Type"
+        media_type_title_cell = excel_cell_shifter("AM88", x_shift = media_offset)
+        ws[media_type_title_cell] = "Media Type"
+        ws[media_type_title_cell].font = Font(bold = True)
+
+        media_offset += 1
+        #prints the actual media type
+        media_type_proper_cell = excel_cell_shifter(media_type_title_cell, y_shift = 1)
+        ws[media_type_proper_cell] = media_type
+
+
+    month_offset = 0
+    for month in PDF.pdf_month_list:
+        ws[excel_cell_shifter("AL90", y_shift = month_offset)] = month
+        month_offset += 1
+
     #dateaxis might be an import from openpyxl.chart.axis
     #I think with dateaxis your 'dates' cells have to be in a formatting it can turn into a true date
     #this would format and scale better as Excel is treating the axis as one with special date properties.
 
     #PDF.length - 1 is equivalent to the amount of different media types
+
     for i in range(1, PDF.pdf_length):
-        line_chart = LineChart()
+        line_chart_inv_min = LineChart()
+
+        #test to add the second lots_over_min charts
+
+        line_chart_lots_over_min = LineChart()
+        line_chart_lots_over_min.title = PDF.pdf_media_type_list[i - 1] + " Lots Above Min"
+        line_chart_lots_over_min.x_axis.title = "Month"
+        line_chart_lots_over_min.y_axis.title = "Lots Above Min"
+
         #takes the title from the list of media types given as a class attribute of PDF, dynamically
-        line_chart.title = PDF.pdf_media_type_list[i - 1]
-        line_chart.x_axis.title = "Date"
-        line_chart.y_axis.title = "Inventory"
-
-        #experiment with what this 'crossAx' thing is...
-        #line_chart.x_axis = DateAxis(crossAx=100)
-
-        #this custom number format could break things
-        #line_chart.x_axis.number_format = "yy-mm-dd"
-
-        #line_chart.x_axis.majorTimeUnit = "days"
+        line_chart_inv_min.title = PDF.pdf_media_type_list[i - 1] + " Inventory"
+        line_chart_inv_min.x_axis.title = "Date"
+        line_chart_inv_min.y_axis.title = "Inventory"
 
 
-        #data
         #added one more column to max_col to see if it would include the minimum values as its own series
-        y_values = Reference(ws, min_col = 8 + i + inv_min_offset, min_row = 2, max_col = 9 + i + inv_min_offset, max_row = PDF.pdf_id + 1)
+        inv_min_y_values = Reference(ws, min_col = 8 + i + inv_min_offset, min_row = 2, max_col = 9 + i + inv_min_offset, max_row = PDF.pdf_id + 1)
         inv_min_offset += 1
 
         #categories
-        x_values = Reference(ws, min_col = 8, min_row = 3, max_col = 8, max_row = PDF.pdf_id + 1)
+        inv_min_x_values = Reference(ws, min_col = 8, min_row = 3, max_col = 8, max_row = PDF.pdf_id + 1)
 
         #this should add the x-values
-        line_chart.add_data(y_values, titles_from_data = True)
-        line_chart.set_categories(x_values)
+        line_chart_inv_min.add_data(inv_min_y_values, titles_from_data = True)
+        line_chart_inv_min.set_categories(inv_min_x_values)
         
         #makes each individual chart and offsets the position for the next one
         #the +3 is for the top of the chart, I believe (check)
-        graph_anchor = get_column_letter(graph_col_offset) + str(PDF.pdf_id + 3 + graph_row_offset)
+        graph_inv_min_anchor = get_column_letter(graph_col_offset) + str(PDF.pdf_id + 3 + graph_row_offset)
 
-        ws.add_chart(line_chart, graph_anchor)
+        ws.add_chart(line_chart_inv_min, graph_inv_min_anchor)
 
         #utilizes new functions in progress
-        graph_metadata_adder(ws, graph_anchor, i - 1)
+        graph_metadata_adder(ws, graph_inv_min_anchor, i - 1, lots_over_min_col_offset)
+        lots_over_min_col_offset += 1
 
 
         #starts drawing graphs lower on the screen instead of more horizontally
@@ -214,16 +241,20 @@ def excel_graph_maker(wb, ws):
 
 
     #final graph of all the data
-    final_line_chart = LineChart()
-    final_line_chart.title = "Total Inventory"
-    final_line_chart.x_axis.title = "Date"
-    final_line_chart.y_axis.title = "Inventory"
+    final_line_chart_inv_min = LineChart()
+    final_line_chart_inv_min.title = "Total Inventory"
+    final_line_chart_inv_min.x_axis.title = "Date"
+    final_line_chart_inv_min.y_axis.title = "Inventory"
 
     y_values = Reference(ws, min_col = 9, min_row = 2, max_col = 9 + (PDF.pdf_id * 2), max_row = PDF.pdf_id + 1)
     x_values = Reference(ws, min_col = 8, min_row = 3, max_col = 8, max_row = PDF.pdf_id + 1)
-    final_line_chart.add_data(y_values, titles_from_data = True)
-    final_line_chart.set_categories(x_values)
-    ws.add_chart(final_line_chart, get_column_letter(graph_col_offset) + str(PDF.pdf_id + 3 + graph_row_offset))
+    final_line_chart_inv_min.add_data(y_values, titles_from_data = True)
+    final_line_chart_inv_min.set_categories(x_values)
+    ws.add_chart(final_line_chart_inv_min, get_column_letter(graph_col_offset) + str(PDF.pdf_id + 3 + graph_row_offset))
+
+
+
+
 
 
 
@@ -316,11 +347,14 @@ def excel_cell_shifter(cell, x_shift = 0, y_shift = 0):
 
 
 #factoring in graph_length and width is a bit too hard since Excel doesn't by default make graphs full cells in width and length
-def graph_metadata_adder(ws, graph_anchor, media_type_indice, graph_length=None, graph_width=None):
+def graph_metadata_adder(ws, graph_anchor, media_type_indice, ratio_col_offset, graph_length=None, graph_width=None):
     #now, how to take the graph anchor, displace by things like graph_length or 
 #temp variable names
     y_val = 0
     x_val = 0
+
+    ratio_start_point = "AM90"
+    ratio_row_offset = 0
 
     #metadata starts below each graph, and from the top left anchor of a given graph the first available cell below the graph is 13 cells down
     metadata_start_point = excel_cell_shifter(graph_anchor, x_shift = y_val, y_shift = 14 + x_val)
@@ -329,6 +363,14 @@ def graph_metadata_adder(ws, graph_anchor, media_type_indice, graph_length=None,
     for i in range(0, len(PDF.pdf_month_list)):
         #so each time we want to iterate 
         cur_month_ratio = PDF.pdf_monthly_inv_ratios[i][media_type_indice]
+
+        #test to make graphs with all the ratios
+        ratio_graph_loc = excel_cell_shifter(ratio_start_point, x_shift=ratio_col_offset, y_shift=ratio_row_offset)
+        ws[ratio_graph_loc] = cur_month_ratio
+        ratio_row_offset += 1
+
+
+
 
 
         #these use excel_cell_shifter() to determine where to be relative to the start of where metadata should be printed below each graph
@@ -339,7 +381,8 @@ def graph_metadata_adder(ws, graph_anchor, media_type_indice, graph_length=None,
         mon_rat_loc = excel_cell_shifter(metadata_start_point, x_shift = x_val, y_shift = 2 + y_val)
 
         ws[mon_loc] = PDF.pdf_month_list[i]
-        ws[inv_min_loc] = "Lots Above Min"
+        ws[mon_loc].font = Font(bold = True)
+        ws[inv_min_loc] = "Lots / Min"
 
 
         #this should make the percentage differences not have rounding errors
@@ -356,9 +399,17 @@ def graph_metadata_adder(ws, graph_anchor, media_type_indice, graph_length=None,
                 percent_change = str(round(((cur_month_ratio / pre_month_ratio) - 1) * 100, 2)) + "%"
 
                 ws[ratio_dif_loc] = percent_change
+
+                if percent_change[0] == "-":
+                    red_color = "FF8888"
+                    ws[ratio_dif_loc].fill = PatternFill(start_color = red_color, end_color = red_color, fill_type = "lightGray")
+                else:
+                    green_color = "88FF88"
+                    ws[ratio_dif_loc].fill = PatternFill(start_color = green_color, end_color = green_color, fill_type = "lightGray")
+
             except:
                 #this would occur if one of the month ratio's involves no media recorded
-                ws[ratio_dif_loc] = "NA"
+                ws[ratio_dif_loc] = "NA"           
 
         #cur_month_ratio will be ahead of pre_month_ratio since this is declared here
         pre_month_ratio = PDF.pdf_monthly_inv_ratios[i][media_type_indice]
