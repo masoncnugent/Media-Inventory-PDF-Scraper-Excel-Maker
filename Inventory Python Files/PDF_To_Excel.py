@@ -159,9 +159,6 @@ def excel_graph_maker(wb, ws):
     graph_row_offset = 0
     inv_min_offset = 0
 
-    #test variable for inputting the media l/ms into columns aside from one another
-    lots_over_min_col_offset = 0
-
     ws["AL89"] = "Month"
     ws["AL89"].font = Font(bold = True)
 
@@ -218,12 +215,13 @@ def excel_graph_maker(wb, ws):
         
         #makes each individual chart and offsets the position for the next one
         #the +3 is for the top of the chart, I believe (check)
-        graph_inv_min_anchor = get_column_letter(graph_col_offset) + str(PDF.pdf_id + 3 + graph_row_offset)
+        #anyways I'm changing it sooo...
+        graph_inv_min_anchor = get_column_letter(graph_col_offset) + str(PDF.pdf_id + (len(PDF.pdf_month_list) + 6) + graph_row_offset)
 
         ws.add_chart(line_chart_inv_min, graph_inv_min_anchor)
 
         #utilizes new functions in progress
-        graph_metadata_adder(ws, graph_inv_min_anchor, i - 1, lots_over_min_col_offset)
+        graph_metadata_adder(ws, graph_inv_min_anchor, i - 1,)
         lots_over_min_col_offset += 1
 
 
@@ -347,14 +345,15 @@ def excel_cell_shifter(cell, x_shift = 0, y_shift = 0):
 
 
 #factoring in graph_length and width is a bit too hard since Excel doesn't by default make graphs full cells in width and length
-def graph_metadata_adder(ws, graph_anchor, media_type_indice, ratio_col_offset, graph_length=None, graph_width=None):
+def graph_metadata_adder(ws, graph_anchor, media_type_indice, graph_length=None, graph_width=None):
     #now, how to take the graph anchor, displace by things like graph_length or 
 #temp variable names
     y_val = 0
     x_val = 0
 
-    ratio_start_point = "AM90"
+    ratio_start_point = "H" + str(PDF.pdf_id + 3)
     ratio_row_offset = 0
+    ratio_col_offset = 0
 
     #metadata starts below each graph, and from the top left anchor of a given graph the first available cell below the graph is 13 cells down
     metadata_start_point = excel_cell_shifter(graph_anchor, x_shift = y_val, y_shift = 14 + x_val)
