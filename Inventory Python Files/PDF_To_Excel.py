@@ -149,6 +149,34 @@ def excel_pdf_inventory_copier(ws):
         #the column changes once each pdf has their values pasted
         row_data_offset += 1
 
+def excel_pdf_lots_over_min_copier(ws):
+
+    #determines the start_point for all the other data
+    lots_over_min_start_point = "I" + str(PDF.pdf_id + 3)
+
+    month_header_loc = excel_cell_shifter(lots_over_min_start_point, y_shift = 1)
+    ws[month_header_loc] = "Month"
+    ws[month_header_loc].font = Font(bold = True)
+
+    media_offset = 1
+    for media_type in PDF.pdf_media_type_list:
+        #prints "Media Type"
+        media_type_title_cell = excel_cell_shifter(lots_over_min_start_point, x_shift = media_offset)
+        ws[media_type_title_cell] = "Media Type"
+        ws[media_type_title_cell].font = Font(bold = True)
+
+        media_offset += 1
+        #prints the actual media type
+        media_type_proper_cell = excel_cell_shifter(media_type_title_cell, y_shift = 1)
+        ws[media_type_proper_cell] = media_type
+
+
+    month_offset = 1
+    for month in PDF.pdf_month_list:
+        #prints the months so they move down below the "Month" header
+        cur_month_loc = excel_cell_shifter(month_header_loc, y_shift = month_offset)
+        ws[cur_month_loc] = month
+        month_offset += 1
 
 
 #this is still in the testing phases, as specifying data for use in the graphs has poor documentation for openpyxl
@@ -159,26 +187,7 @@ def excel_graph_maker(wb, ws):
     graph_row_offset = 0
     inv_min_offset = 0
 
-    ws["AL89"] = "Month"
-    ws["AL89"].font = Font(bold = True)
 
-    media_offset = 0
-    for media_type in PDF.pdf_media_type_list:
-        #prints "Media Type"
-        media_type_title_cell = excel_cell_shifter("AM88", x_shift = media_offset)
-        ws[media_type_title_cell] = "Media Type"
-        ws[media_type_title_cell].font = Font(bold = True)
-
-        media_offset += 1
-        #prints the actual media type
-        media_type_proper_cell = excel_cell_shifter(media_type_title_cell, y_shift = 1)
-        ws[media_type_proper_cell] = media_type
-
-
-    month_offset = 0
-    for month in PDF.pdf_month_list:
-        ws[excel_cell_shifter("AL90", y_shift = month_offset)] = month
-        month_offset += 1
 
     #dateaxis might be an import from openpyxl.chart.axis
     #I think with dateaxis your 'dates' cells have to be in a formatting it can turn into a true date
@@ -222,7 +231,6 @@ def excel_graph_maker(wb, ws):
 
         #utilizes new functions in progress
         graph_metadata_adder(ws, graph_inv_min_anchor, i - 1,)
-        lots_over_min_col_offset += 1
 
 
         #starts drawing graphs lower on the screen instead of more horizontally
@@ -269,9 +277,11 @@ def let_to_base_26(letters, x_shift = 0):
     base_26_num = 0
     for let in letters.upper():
         #added + 1 to mult_val so AB doesn't give a base_26_num of 1
-        mult_val = let_list.index(let) + 1
+        mult_val = let_list.index(let) - 1
         #for AB this would give 26 + 2 = 28
-        base_26_num += mult_val * (26 ** high_exp)
+
+        #base_26_num += mult_val * (26 ** high_exp)
+        base_26_num = 26 ** high_exp + mult_val
         high_exp -= 1
 
     #AB might give issues because it's 
@@ -289,27 +299,29 @@ def base_26_to_let(base_26_num):
     loop_logic = True
     let_list = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
     while loop_logic:
-        quotient = quotient_int / 26
-        quotient_int = math.floor(quotient)
-        #float stuff might cause issues here
-        remainder = round((quotient - quotient_int) * 26)
-        #does the -1 compensate
-        code_list.insert(0, remainder)
 
-        if 0 < quotient_int < 26:
+        if quotient_int < 26:
             code_list.insert(0, quotient_int)
             loop_logic = False
+        
+        else:
+            quotient = quotient_int / 26
+            quotient_int = math.floor(quotient)
+            remainder = round((quotient - quotient_int) * 26)
+            code_list.insert(0, remainder)
 
-        #quotient_int of 0 would give another letter erroneously added, so this was included
-        elif quotient_int == 0:
-            loop_logic = False
+
+    #LEARN HOW TO ACTUALLY CONVERT BASE SYSTEMS EVEN IF YOU HAVE FRACTIONS
+
 
     letters = ""
     for code in code_list:
         #this -1 might compensate for the +1 added to let_to_base_26 for "A"
-        letters += let_list[code - 1]
+        letters += let_list[code]
 
     return letters
+
+
 
 #returns a cell shifted up, down, left, or right, according to the shift parameters
 #+3 in x_shift moves the column 3 to the right, while -2 in y_shift moves the row 2 down.
@@ -370,8 +382,6 @@ def graph_metadata_adder(ws, graph_anchor, media_type_indice, graph_length=None,
 
 
 
-
-
         #these use excel_cell_shifter() to determine where to be relative to the start of where metadata should be printed below each graph
         mon_loc = excel_cell_shifter(metadata_start_point, x_shift = x_val, y_shift = y_val)
 
@@ -425,11 +435,22 @@ def excel_batch_processor():
 
     wb, ws = excel_wb_maker()
 
+    #why are we testing this again :(
+    test_cases = ["A", "Y", "Z", "AA", "AZ", "ZZ"]
+    for test in test_cases:
+        print("starting with " + test)
+        print("base_26 = " + str(let_to_base_26(test)))
+        print("moved cell = " + excel_cell_shifter(test + "1", x_shift = 1))
+    
+    print("done :)")
+
     excel_pdf_vertical_copier(ws)
 
     excel_media_type_adder(ws)
 
     excel_pdf_inventory_copier(ws)
+
+    excel_pdf_lots_over_min_copier(ws)
 
     #could switch worksheets for this by this point
 
