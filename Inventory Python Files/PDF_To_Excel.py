@@ -272,7 +272,7 @@ def excel_graph_maker(wb, ws):
 def let_to_base_26(letters, x_shift = 0):
     #this is neither the prettiest, nor fastest, implementation. But it is one still
     let_list = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
-    high_exp = len(letters) - 1
+    exp = len(letters) - 1
 
     base_26_num = 0
     for let in letters.upper():
@@ -281,8 +281,8 @@ def let_to_base_26(letters, x_shift = 0):
         #for AB this would give 26 + 2 = 28
 
         #base_26_num += mult_val * (26 ** high_exp)
-        base_26_num = 26 ** high_exp + mult_val
-        high_exp -= 1
+        base_26_num = base_26_num + (26 ** exp + mult_val)
+        exp -= 1
 
     #AB might give issues because it's 
 
@@ -294,30 +294,32 @@ def let_to_base_26(letters, x_shift = 0):
 
 
 def base_26_to_let(base_26_num):
-    quotient_int = base_26_num
+    quotient_old = base_26_num
     code_list = []
     loop_logic = True
     let_list = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"]
     while loop_logic:
 
-        if quotient_int < 26:
-            code_list.insert(0, quotient_int)
+        quotient_new = math.floor(quotient_old / 26)
+
+        remainder = quotient_old - (quotient_new * 26)
+
+        if quotient_new == 0:
+            code_list.append(remainder)
             loop_logic = False
         
         else:
-            quotient = quotient_int / 26
-            quotient_int = math.floor(quotient)
-            remainder = round((quotient - quotient_int) * 26)
-            code_list.insert(0, remainder)
-
-
-    #LEARN HOW TO ACTUALLY CONVERT BASE SYSTEMS EVEN IF YOU HAVE FRACTIONS
+            code_list.append(remainder)
+            quotient_old = quotient_new
 
 
     letters = ""
     for code in code_list:
         #this -1 might compensate for the +1 added to let_to_base_26 for "A"
         letters += let_list[code]
+
+    
+
 
     return letters
 
