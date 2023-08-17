@@ -276,15 +276,11 @@ def let_to_base_26(letters, x_shift = 0):
 
     base_26_num = 0
     for let in letters.upper():
-        #added + 1 to mult_val so AB doesn't give a base_26_num of 1
-        mult_val = let_list.index(let) - 1
-        #for AB this would give 26 + 2 = 28
+        mult_val = let_list.index(let) + 1
 
-        #base_26_num += mult_val * (26 ** high_exp)
-        base_26_num = base_26_num + (26 ** exp + mult_val)
+        base_26_num += (mult_val * (26 ** exp))
         exp -= 1
 
-    #AB might give issues because it's 
 
     #check if this works with negative x_shift values
     base_26_num += x_shift
@@ -304,7 +300,7 @@ def base_26_to_let(base_26_num):
 
         remainder = quotient_old - (quotient_new * 26)
 
-        if quotient_new == 0:
+        if quotient_new <= 1:
             code_list.append(remainder)
             loop_logic = False
         
@@ -314,9 +310,8 @@ def base_26_to_let(base_26_num):
 
 
     letters = ""
-    for code in code_list:
-        #this -1 might compensate for the +1 added to let_to_base_26 for "A"
-        letters += let_list[code]
+    for code in reversed(code_list):
+        letters += let_list[code - 1]
 
     
 
