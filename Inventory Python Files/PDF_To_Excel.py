@@ -66,7 +66,7 @@ def excel_pdf_vertical_copier(ws):
         ws[title_cell] = pdf.filename
 
         #adds the dates that all the inventory will be compared against
-        date_cell = "H" + str(date_offset)
+        date_cell = "I" + str(date_offset)
         ws[date_cell] = pdf.filename[:8]
 
         if date_cell == "CA":
@@ -75,7 +75,7 @@ def excel_pdf_vertical_copier(ws):
         date_offset += 1
     
     #adds the word "Date" above its respective column
-    ws["H2"] = "Date"
+    ws["I2"] = "Date"
 
 
 
@@ -90,25 +90,25 @@ def excel_media_type_adder(ws):
     #this allows for the minimum columns to exist alongside the data for each media type
     min_offset = 0
     for i in range(3, 11):
-        ws[get_column_letter(i + 6 + min_offset) + "2"] = ws["A3"].value + " " + str(ws["B" + str(i)].value)
+        ws[get_column_letter(i + 7 + min_offset) + "2"] = ws["A3"].value + " " + str(ws["B" + str(i)].value)
         PDF.pdf_media_type_list.append(ws["A3"].value + " " + str(ws["B" + str(i)].value))
         min_offset += 1
 
     for i in range(11, 19):
-        ws[get_column_letter(i + 6 + min_offset) + "2"] = ws["A11"].value + " " + str(ws["B" + str(i)].value)
+        ws[get_column_letter(i + 7 + min_offset) + "2"] = ws["A11"].value + " " + str(ws["B" + str(i)].value)
         PDF.pdf_media_type_list.append(ws["A11"].value + " " + str(ws["B" + str(i)].value))
         min_offset += 1
 
     #the end is dynamically encoded to match the length of each PDF
     for i in range(19, PDF.pdf_length + 2):
-        ws[get_column_letter(i + 6 + min_offset) + "2"] = ws["A" + str(i)].value + " " + str(ws["B" + str(i)].value)
+        ws[get_column_letter(i + 7 + min_offset) + "2"] = ws["A" + str(i)].value + " " + str(ws["B" + str(i)].value)
         PDF.pdf_media_type_list.append(ws["A" + str(i)].value + " " + str(ws["B" + str(i)].value))
         min_offset += 1
 
     #adds the words "Media Type" and "Minimum" above their respective column
     for i in range(len(PDF.pdf_media_type_list)):
-        inv_title_col_let = get_column_letter(9 + (2 * i))
-        med_title_col_let = get_column_letter(10 + (2 * i))
+        inv_title_col_let = get_column_letter(10 + (2 * i))
+        med_title_col_let = get_column_letter(11 + (2 * i))
 
         ws[inv_title_col_let + "1"] = "Media Type"
         ws[med_title_col_let + "2"] = "Minimum"
@@ -122,7 +122,7 @@ def excel_pdf_inventory_copier(ws):
     row_data_offset = 3
 
     for pdf in PDF.pdf_list:
-        col_data_offset = 9
+        col_data_offset = 10
 
         inv_list = pdf.inventory_list
         min_list = pdf.minimum_list
@@ -149,6 +149,8 @@ def excel_pdf_inventory_copier(ws):
         #the column changes once each pdf has their values pasted
         row_data_offset += 1
 
+
+
 def excel_pdf_lots_over_min_copier(ws):
 
     #determines the start_point for all the other data
@@ -165,7 +167,7 @@ def excel_pdf_lots_over_min_copier(ws):
         ws[media_type_title_cell] = "Media Type"
         ws[media_type_title_cell].font = Font(bold = True)
 
-        media_offset += 1
+        media_offset += 2
         #prints the actual media type
         media_type_proper_cell = excel_cell_shifter(media_type_title_cell, y_shift = 1)
         ws[media_type_proper_cell] = media_type
@@ -177,10 +179,30 @@ def excel_pdf_lots_over_min_copier(ws):
         cur_month_loc = excel_cell_shifter(month_header_loc, y_shift = month_offset)
         ws[cur_month_loc] = month
         month_offset += 1
+    
+
+        #test
+        month_row_offset = 0
+    for inv_over_min_month in PDF.pdf_lots_over_min:
+        month_col_offset = 0
+        
+        for i in range(0, len(PDF.pdf_media_type_list)):
+
+            inv_over_min_cell = excel_cell_shifter(lots_over_min_start_point, x_shift = 1 + month_col_offset, y_shift = 2 + month_row_offset)
+
+            test = inv_over_min_month[i]
+
+            ws[inv_over_min_cell] = inv_over_min_month[i]
+
+            month_col_offset += 2
+        
+        month_row_offset += 1
+
+
 
 
 #this is still in the testing phases, as specifying data for use in the graphs has poor documentation for openpyxl
-def excel_graph_maker(wb, ws):
+def excel_graph_maker(ws):
 
     #starts at the eighth column, or H
     graph_col_offset = 8
@@ -212,7 +234,7 @@ def excel_graph_maker(wb, ws):
 
 
         #added one more column to max_col to see if it would include the minimum values as its own series
-        inv_min_y_values = Reference(ws, min_col = 8 + i + inv_min_offset, min_row = 2, max_col = 9 + i + inv_min_offset, max_row = PDF.pdf_id + 1)
+        inv_min_y_values = Reference(ws, min_col = 9 + i + inv_min_offset, min_row = 2, max_col = 10 + i + inv_min_offset, max_row = PDF.pdf_id + 1)
         inv_min_offset += 1
 
         #categories
@@ -230,7 +252,7 @@ def excel_graph_maker(wb, ws):
         ws.add_chart(line_chart_inv_min, graph_inv_min_anchor)
 
         #utilizes new functions in progress
-        graph_metadata_adder(ws, graph_inv_min_anchor, i - 1,)
+        graph_metadata_adder(ws, graph_inv_min_anchor, i - 1)
 
 
         #starts drawing graphs lower on the screen instead of more horizontally
@@ -243,7 +265,7 @@ def excel_graph_maker(wb, ws):
             if len(PDF.pdf_month_list) > 9: 
                 graph_row_offset += 23
             else:
-                graph_row_offset += 19
+                graph_row_offset += 20
 
 
     #final graph of all the data
@@ -274,11 +296,9 @@ def let_to_base_26(letters, x_shift = 0):
     base_26_num = 0
 
     for i in range(len(letters)):
-        test = ord('A')
-        test2 = ord(letters.lower()[len(letters) - i - 1])
-        base_26_num += ord(letters.lower()[len(letters) - i - 1] - offset) * 26 ** i
+        base_26_num += (ord(letters[len(letters) - i - 1]) - offset) * (26 ** i)
 
-    return base_26_num
+    return base_26_num + x_shift
 
 
 
@@ -289,9 +309,9 @@ def base_26_to_let(base_26_num):
     while quotient > 0:
         quotient, remainder = divmod(quotient - 1, 26)
 
-        letters += chr(remainder + offset + 1)
+        letters = chr(remainder + offset + 1) + letters
 
-    return letters.upper()
+    return letters
 
 
 
@@ -345,7 +365,8 @@ def graph_metadata_adder(ws, graph_anchor, media_type_indice, graph_length=None,
 #should only iterate for as many months there are
     for i in range(0, len(PDF.pdf_month_list)):
         #so each time we want to iterate 
-        cur_month_ratio = PDF.pdf_monthly_inv_ratios[i][media_type_indice]
+        #changed to lots / min
+        cur_month_ratio = PDF.pdf_lots_over_min[i][media_type_indice]
 
         #test to make graphs with all the ratios
         ratio_graph_loc = excel_cell_shifter(ratio_start_point, x_shift=ratio_col_offset, y_shift=ratio_row_offset)
@@ -393,7 +414,7 @@ def graph_metadata_adder(ws, graph_anchor, media_type_indice, graph_length=None,
                 ws[ratio_dif_loc] = "NA"           
 
         #cur_month_ratio will be ahead of pre_month_ratio since this is declared here
-        pre_month_ratio = PDF.pdf_monthly_inv_ratios[i][media_type_indice]
+        pre_month_ratio = PDF.pdf_lots_over_min[i][media_type_indice]
 
         x_val += 1
         #should allow for the metadata to not stack up
@@ -402,19 +423,11 @@ def graph_metadata_adder(ws, graph_anchor, media_type_indice, graph_length=None,
             x_val = 0
 
 
+
 #runs all excel related functions. data_scraper() has to be run first to create the PDF class with all it's PDF objects
 def excel_batch_processor():
 
     wb, ws = excel_wb_maker()
-
-    #why are we testing this again :(
-    test_cases = ["A", "Y", "Z", "AA", "AZ", "ZZ"]
-    for test in test_cases:
-        print("starting with " + test)
-        print("base_26 = " + str(let_to_base_26(test)))
-        print("moved cell = " + excel_cell_shifter(test + "1", x_shift = 1))
-    
-    print("done :)")
 
     excel_pdf_vertical_copier(ws)
 
@@ -427,12 +440,10 @@ def excel_batch_processor():
     #could switch worksheets for this by this point
 
     #adding wb to help with debugging
-    excel_graph_maker(wb, ws)
+    excel_graph_maker(ws)
 
     wb.save(ws.title)
 
     print("Excel file complete!")
 
     #figure out how to remove the pdf files from the github repo
-
-    #i think rounding errors are accumulating in your percent changes lol
