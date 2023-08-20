@@ -7,10 +7,10 @@ class PDF:
     pdf_id = 1
     pdf_list = []
     pdf_length = 0
-    pdf_media_type_list = []
     #each index will be a inv/min ratio for each month brought down to 2 decimal places
-    pdf_monthly_inv_ratios = []
+    pdf_lots_over_min = []
     pdf_month_list = []
+    pdf_media_type_list = []
 
     #instance variables and functions
     def __init__(self, unformatted_data, filename):
@@ -46,7 +46,7 @@ class PDF:
         self.lot_size_list = self.lot_size_list_maker()
 
         #gets ratios in float form for accuracy, the rounding is done later after all floated values for each month are added together and divided by the number of recorded values for each month
-        self.inv_ratio_list_full_float = self.inv_ratio_list_full_float_maker()
+        self.lots_above_min_float_list = self.lots_above_min_float_list_maker()
         
         #the PDF class has a list which stores every pdf instance
         PDF.pdf_list.append(self)
@@ -179,28 +179,24 @@ class PDF:
     
 
 
-    #determines the ratio of inventory / minimum for each media type in the pdf
-    #one known issue in this data representation is that media prep tries to stay a certain number of lots above the minimum. This doesn't change as the minimum changes over time, as we only make media when inventory dips below the minimum
-    #therefore, if we hypothetically try to stay 2 lots above minimum, and say the minimum for a given media type is 10, then we'd have 12/10 or a ratio of 1.2
-    #if the minimum jumped up to 20, we'd still stay 2 lots above it, and would then have 22/20 or a ratio of 1.1. This month would be recorded as decreasing the ratio by 8.3 repeating percent, showing ratios to be a non-ideal data representation when the minimum value changes between months
-    #a more ideal system would be inv - min / lots, so it's lots above or below minimum. Determining lot size would be difficult, as the formatting (check) for this column changes between pdfs
-    def inv_ratio_list_full_float_maker(self):
+    #determines the number of lots above minimum for each media type in the pdf
+    def lots_above_min_float_list_maker(self):
 
         if len(self.inventory_list) != len(self.minimum_list):
             raise Exception("The length of self.inventory_list is " + str(len(self.inventory_list)) + " while self.minimum_list is " + str(len(self.minimum_list)) + " items long. These do not match.")
 
         #utilizes floats
-        full_float_inv_ratio_list = []
+        lots_above_min_float_list = []
         #this indexing works because self.inventory_list is the same length as self.minimum_list
         for i in range(0, len(self.inventory_list)):
 
             try:
-                full_float_inv_ratio_list.append((self.inventory_list[i] - self.minimum_list[i]) / self.lot_size_list[i])
+                lots_above_min_float_list.append((self.inventory_list[i] - self.minimum_list[i]) / self.lot_size_list[i])
             
             except:
-                full_float_inv_ratio_list.append("")
+                lots_above_min_float_list.append("")
 
-        return full_float_inv_ratio_list
+        return lots_above_min_float_list
 
 
 
@@ -208,7 +204,7 @@ class PDF:
     #could also do other things, with the current stuff restricted to one function, of many, that end_functions() calls
     @classmethod
     def end_functions(cls):
-        month_float_ratio_list = []
+        inv_over_min_float_list = []
         #starts the old_pdf_month as 'January' for the first pdf so it has the variable declared
         old_pdf_month = PDF.pdf_list[0].month
         for pdf in PDF.pdf_list:
@@ -218,37 +214,70 @@ class PDF:
             if cur_pdf_month != old_pdf_month or pdf.id == PDF.pdf_id - 1:
 
                 #holds the ratios for each media type rounded to two decimals for a given month
-                media_monthly_ratio_list = []
+                media_monthly_inv_over_min_list = []
 
-                #the length of month_float_ratio_list[0] is the num of different media types
-                #the length of month_float_ratio_list is num of pdfs for a given month
-                for i in range(0, len(month_float_ratio_list[0])):
+                #the length of inv_over_min_float_list[0] is the num of different media types
+                #the length of inv_over_min_float_list is num of pdfs for a given month
+                for i in range(0, len(inv_over_min_float_list[0])):
+                    exp = PDF.pdf_list[0].data[i]
                     media_monthly_sum = 0
 
                     #recorded_num does not iterate from "" entries, and doesn't use them for the denominator in the average
                     recorded_num = 0
-                    for daily_ratio in month_float_ratio_list:
+                    non_record_count = 0
+                    for daily_ratio in inv_over_min_float_list:
                         if daily_ratio[i] != "":
                             media_monthly_sum += daily_ratio[i]
                             recorded_num += 1
+                        else:
+                            non_record_count += 1
+
+                            print(str(non_record_count) + " pdfs without data for " + str(pdf.data[i]) + " in the month of " + old_pdf_month)
 
                     #prevents the averaging of media types with no data for them
                     #does work, however, with media types with some pdfs with data and others without
                     if recorded_num != 0:
-                        media_monthly_ratio_list.append(round(media_monthly_sum / recorded_num, 2))
+                        media_monthly_inv_over_min_list.append(round(media_monthly_sum / recorded_num, 2))
 
                     elif recorded_num == 0:
-                        media_monthly_ratio_list.append("")
+                        media_monthly_inv_over_min_list.append("")
                 
-                PDF.pdf_monthly_inv_ratios.append(media_monthly_ratio_list)
+                PDF.pdf_lots_over_min.append(media_monthly_inv_over_min_list)
             
             elif cur_pdf_month == old_pdf_month:
-                month_float_ratio_list.append(pdf.inv_ratio_list_full_float)
+                inv_over_min_float_list.append(pdf.lots_above_min_float_list)
 
             #add a condition for the last pdf, however you want to determine which is the last pdf, where it still runs the cur_pdf_month != old_pdf_month code
             #otherwise the final month will not be added to PDf.pdf_monthly_inv_ratios
 
             old_pdf_month = pdf.month
+
+    """
+    #attempting a re-write
+    def end_functions(cls):
+        inv_over_min_float_list = []
+
+        old_pdf_month = PDF.pdf_month_list[0]
+        for pdf in PDF.pdf_list:
+            cur_pdf_month = pdf.month
+
+            if cur_pdf_month != old_pdf_month or pdf.id == PDF.pdf_id - 1:
+                media_monthly_inv_over_min_list = []
+                #will look like [0, .2, .3, as long as there are media types]
+
+
+
+
+
+
+
+
+            elif cur_pdf_month == old_pdf_month:
+                inv_over_min_float_list.append(pdf.lots_above_min_float_list)
+
+    """
+
+
 
 
 
@@ -502,9 +531,3 @@ def data_scraper(pdf_location):
     #runs functions related to when all PDF data is inputted
     #these functions collect metadata about the whole of the pdf data
     PDF.end_functions()
-
-
-    #NOW THAT ALL PDFS ARE FORMATTED PROPERLY IN SELF.DATA, THE NUMBER OF INV TO A LOT CAN BE REFERENCED
-    #INV - MIN / LOT COUNT IS A PERFECT DATA ANALYSIS POINT, AS IT'S THE NUM OF LOTS ABOVE MINIMUM, UNAFFECTED BY RISING MINIMUM LEVELS
-
-    #I THINK PARTIALLY INCOMPLETE MONTHS STILL GIVE WEIRD DATA RATIOS
