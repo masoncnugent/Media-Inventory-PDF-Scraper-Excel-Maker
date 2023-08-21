@@ -9,6 +9,7 @@ class PDF:
     pdf_length = 0
     #each index will be a inv/min ratio for each month brought down to 2 decimal places
     pdf_lots_over_min = []
+    pdf_lots_over_min_averages = []
     pdf_month_list = []
     pdf_media_type_list = []
 
@@ -167,14 +168,18 @@ class PDF:
                 continue
 
             lot_size = ""
-            for char in pdf_line[2]:
-                try:
-                    int(char)
-                    lot_size += char
-                
-                except:
-                    lot_size_list.append(int(lot_size))
-                    break
+            if len(pdf_line[2]) > 1:
+                for char in pdf_line[2]:
+                    try:
+                        int(char)
+                        lot_size += char
+                    
+                    except:
+                        lot_size_list.append(int(lot_size))
+                        break
+            else:
+                lot_size_list.append("")
+
         return lot_size_list
     
 
@@ -191,6 +196,7 @@ class PDF:
         for i in range(0, len(self.inventory_list)):
 
             try:
+
                 lots_above_min_float_list.append((self.inventory_list[i] - self.minimum_list[i]) / self.lot_size_list[i])
             
             except:
@@ -218,33 +224,47 @@ class PDF:
 
                 #the length of inv_over_min_float_list[0] is the num of different media types
                 #the length of inv_over_min_float_list is num of pdfs for a given month
+                #inv_over_min_float_list = [[individual pdf data with 31 media types], [individual pdf data with 31 media types], [etc.]]
+
+
                 for i in range(0, len(inv_over_min_float_list[0])):
-                    exp = PDF.pdf_list[0].data[i]
                     media_monthly_sum = 0
 
                     #recorded_num does not iterate from "" entries, and doesn't use them for the denominator in the average
                     recorded_num = 0
                     non_record_count = 0
-                    for daily_ratio in inv_over_min_float_list:
-                        if daily_ratio[i] != "":
-                            media_monthly_sum += daily_ratio[i]
+                    for pdf_media_ratios in inv_over_min_float_list:
+                        if pdf_media_ratios[i] != "":
+                            media_monthly_sum += pdf_media_ratios[i]
                             recorded_num += 1
                         else:
                             non_record_count += 1
 
-                            print(str(non_record_count) + " pdfs without data for " + str(pdf.data[i]) + " in the month of " + old_pdf_month)
 
                     #prevents the averaging of media types with no data for them
                     #does work, however, with media types with some pdfs with data and others without
                     if recorded_num != 0:
                         media_monthly_inv_over_min_list.append(round(media_monthly_sum / recorded_num, 2))
+                        #print("media monthly sum is " + str(media_monthly_sum))
+                        #print(str(recorded_num) + " pdfs recorded for " + str(PDF.pdf_list[0].data[i+1]))
+                        #print("so we're adding " + str(round(media_monthly_sum / recorded_num, 2)) + " to media_monthly_inv_over_min_list")
+                        #print(str(non_record_count) + " pdfs without data for " + str(pdf.data[i+1]) + " in the month of " + old_pdf_month + "\n")
 
                     elif recorded_num == 0:
                         media_monthly_inv_over_min_list.append("")
+                        #print("all this applies when a month has no data for a media type")
+                        #print("media monthly sum is " + str(media_monthly_sum))
+                        #print(str(recorded_num) + " pdfs recorded for " + str(PDF.pdf_list[0].data[i+1]))
+                        #print(str(non_record_count) + " pdfs without data for " + str(PDF.pdf_list[0].data[i+1]) + " in the month of " + old_pdf_month + "\n")
                 
                 PDF.pdf_lots_over_min.append(media_monthly_inv_over_min_list)
+                
+                #test, does this reset things???????
+                inv_over_min_float_list = []
+
             
             elif cur_pdf_month == old_pdf_month:
+                #check = pdf.lots_above_min_float_list
                 inv_over_min_float_list.append(pdf.lots_above_min_float_list)
 
             #add a condition for the last pdf, however you want to determine which is the last pdf, where it still runs the cur_pdf_month != old_pdf_month code
@@ -252,32 +272,22 @@ class PDF:
 
             old_pdf_month = pdf.month
 
-    """
-    #attempting a re-write
-    def end_functions(cls):
-        inv_over_min_float_list = []
 
-        old_pdf_month = PDF.pdf_month_list[0]
-        for pdf in PDF.pdf_list:
-            cur_pdf_month = pdf.month
+        for mon_ind in range(0, len(PDF.pdf_month_list)):
+            media_lots_over_min_sum = 0
+            media_lots_over_min_num = 0
 
-            if cur_pdf_month != old_pdf_month or pdf.id == PDF.pdf_id - 1:
-                media_monthly_inv_over_min_list = []
-                #will look like [0, .2, .3, as long as there are media types]
+            for med_type_ind in range(len(PDF.pdf_list[0].inventory_list)):
+                try:
+                    test = PDF.pdf_lots_over_min[mon_ind][med_type_ind]
+                    media_lots_over_min_sum += PDF.pdf_lots_over_min[mon_ind][med_type_ind]
+                    media_lots_over_min_num += 1
 
-
-
-
-
-
-
-
-            elif cur_pdf_month == old_pdf_month:
-                inv_over_min_float_list.append(pdf.lots_above_min_float_list)
-
-    """
-
-
+                except:
+                    continue
+            
+            PDF.pdf_lots_over_min_averages.append(round((media_lots_over_min_sum / media_lots_over_min_num), 2))
+        print(":)")
 
 
 
@@ -432,7 +442,6 @@ class PDF:
         #if you update the original it updates the copy, you have to update the copy
         for sub_list in spaced_data:
             sublist_count += 1
-            #print(sublist_count)
 
             if len(sub_list) < 6:
                 try:
