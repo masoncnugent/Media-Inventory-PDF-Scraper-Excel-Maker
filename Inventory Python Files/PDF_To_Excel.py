@@ -193,9 +193,6 @@ def excel_pdf_lots_over_min_copier(ws):
 
             inv_over_min_cell = excel_cell_shifter(lots_over_min_start_point, x_shift = 1 + month_col_offset, y_shift = 2 + month_row_offset)
 
-            test = inv_over_min_month[i]
-            hmm = PDF.pdf_list[0].data[i+1]
-
             ws[inv_over_min_cell] = inv_over_min_month[i]
 
             month_col_offset += 2
@@ -243,9 +240,9 @@ def excel_graph_maker(ws):
         line_chart_lots_over_min.x_axis.title = "Month"
         line_chart_lots_over_min.y_axis.title = "Lots Above Min"
 
-        lots_over_min_y_values = Reference(ws, min_col = 9 + i + inv_min_offset, min_row = 76, max_col = 9 + i + inv_min_offset, max_row = 76 + len(PDF.pdf_month_list))
+        lots_over_min_y_values = Reference(ws, min_col = 9 + i + inv_min_offset, min_row = PDF.pdf_id + 4, max_col = 9 + i + inv_min_offset, max_row = PDF.pdf_id + len(PDF.pdf_month_list) + 4)
 
-        lots_over_min_x_values = Reference(ws, min_col = 9, min_row = 77, max_col = 9, max_row = 76 + len(PDF.pdf_month_list))
+        lots_over_min_x_values = Reference(ws, min_col = 9, min_row = PDF.pdf_id + 5, max_col = 9, max_row = PDF.pdf_id + len(PDF.pdf_month_list) + 4)
 
 
         line_chart_lots_over_min.add_data(lots_over_min_y_values, titles_from_data = True)
@@ -317,9 +314,9 @@ def excel_graph_maker(ws):
     line_chart_total_lots_over_min.x_axis.title = "Month"
     line_chart_total_lots_over_min.y_axis.title = "Lots Above Min"
 
-    total_lots_over_min_y_values = Reference(ws, min_col = 10, min_row = 76, max_col = 10 + inv_min_offset + len(PDF.pdf_media_type_list), max_row = 76 + len(PDF.pdf_month_list))
+    total_lots_over_min_y_values = Reference(ws, min_col = 10, min_row = PDF.pdf_id + 4, max_col = 10 + inv_min_offset + len(PDF.pdf_media_type_list), max_row = PDF.pdf_id + len(PDF.pdf_month_list) + 4)
 
-    total_lots_over_min_x_values = Reference(ws, min_col = 9, min_row = 77, max_col = 9, max_row = 76 + len(PDF.pdf_month_list))
+    total_lots_over_min_x_values = Reference(ws, min_col = 9, min_row = PDF.pdf_id + 5, max_col = 9, max_row = PDF.pdf_id + len(PDF.pdf_month_list) + 4)
 
     line_chart_total_lots_over_min.add_data(total_lots_over_min_y_values, titles_from_data = True)
     line_chart_total_lots_over_min.set_categories(total_lots_over_min_x_values)
@@ -502,4 +499,4 @@ def excel_batch_processor():
 
     print("Excel file complete!")
 
-    #figure out how to remove the pdf files from the github repo
+    #figure out how to remove the pdf files from the github repos
