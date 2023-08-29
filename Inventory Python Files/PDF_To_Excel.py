@@ -2,6 +2,9 @@ from openpyxl import Workbook
 from openpyxl.utils import get_column_letter
 from openpyxl.chart import LineChart, Reference
 from openpyxl.chart.axis import DateAxis
+from openpyxl.chart.series_factory import SeriesFactory
+from openpyxl.chart.trendline import Trendline
+from openpyxl.drawing.line import LineProperties
 from openpyxl.styles import Font, PatternFill
 import math
 
@@ -316,8 +319,21 @@ def excel_graph_maker(ws):
     y_references = [Reference(ws, min_col=col_idx, max_col=col_idx, min_row = min_row_y_start, max_row = min_row_y_start + len(PDF.pdf_month_list)) for col_idx in valid_y_data]
     print(y_references)
 
-    for y_ref in y_references:
+    for y_ref in y_references[:-1]:
         line_chart_total_lots_over_min.add_data(y_ref, titles_from_data = True)
+
+    average_series_reference = y_references[-1]
+
+    #no titles from data???
+    average_series = SeriesFactory(average_series_reference)
+
+    line_chart_total_lots_over_min.append(average_series)
+
+    average_trendline = Trendline()
+
+    average_trendline.line = LineProperties(solidFill = "FF0000", w = 30000)
+
+    average_series.trendline.append(average_trendline)
 
     #total_lots_over_min_y_values = Reference(ws, min_col = 10, min_row = PDF.pdf_id + 4, max_col = 10 + inv_min_offset + len(PDF.pdf_media_type_list), max_row = PDF.pdf_id + len(PDF.pdf_month_list) + 4)
 
@@ -329,6 +345,8 @@ def excel_graph_maker(ws):
 
     graph_total_lots_over_min_anchor = excel_cell_shifter("A1", x_shift = graph_col_offset + 32, y_shift = PDF.pdf_id + len(PDF.pdf_month_list) + 5 + graph_row_offset)
 
+    line_chart_total_lots_over_min.width = 29
+    line_chart_total_lots_over_min.height = 38
 
     #scaling test
     #line_chart_lots_over_min.y_axis.scaling.min = -3
