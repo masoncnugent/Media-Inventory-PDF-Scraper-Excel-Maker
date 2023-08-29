@@ -109,9 +109,9 @@ def excel_media_type_adder(ws):
     #adds the words "Media Type" and "Minimum" above their respective column
     for i in range(len(PDF.pdf_media_type_list)):
         inv_title_col_let = excel_cell_shifter("A1", x_shift = 9 + (2 * i))
-        med_title_col_let = excel_cell_shifter("A1", x_shift = 10 + (2 * i))
+        med_title_col_let = excel_cell_shifter("A1", x_shift = 10 + (2 * i), y_shift = 1)
 
-        ws[inv_title_col_let] = "Media Type"
+        ws[inv_title_col_let] = "Media Type / Inv"
         ws[med_title_col_let] = "Minimum"
         ws[inv_title_col_let].font = Font(bold = True)
         ws[med_title_col_let].font = Font(bold = True)
@@ -222,27 +222,23 @@ def excel_graph_maker(ws):
     graph_row_offset = 0
     inv_min_offset = 0
 
+    #where the min rows for the y values start in line_chart_lots_over_min
+    min_row_y_start = PDF.pdf_id + 4
 
-
-    #dateaxis might be an import from openpyxl.chart.axis
-    #I think with dateaxis your 'dates' cells have to be in a formatting it can turn into a true date
-    #this would format and scale better as Excel is treating the axis as one with special date properties.
 
     #PDF.length - 1 is equivalent to the amount of different media types
 
     for i in range(1, PDF.pdf_length):
         line_chart_inv_min = LineChart()
 
-        #test to add the second lots_over_min charts
-
         line_chart_lots_over_min = LineChart()
         line_chart_lots_over_min.title = PDF.pdf_media_type_list[i - 1] + " Lots Above Min"
         line_chart_lots_over_min.x_axis.title = "Month"
         line_chart_lots_over_min.y_axis.title = "Lots Above Min"
 
-        lots_over_min_y_values = Reference(ws, min_col = 9 + i + inv_min_offset, min_row = PDF.pdf_id + 4, max_col = 9 + i + inv_min_offset, max_row = PDF.pdf_id + len(PDF.pdf_month_list) + 4)
+        lots_over_min_y_values = Reference(ws, min_col = 8 + (2 * i), min_row = min_row_y_start, max_col = 8 + (2 * i), max_row = min_row_y_start + len(PDF.pdf_month_list))
 
-        lots_over_min_x_values = Reference(ws, min_col = 9, min_row = PDF.pdf_id + 5, max_col = 9, max_row = PDF.pdf_id + len(PDF.pdf_month_list) + 4)
+        lots_over_min_x_values = Reference(ws, min_col = 9, min_row = min_row_y_start + 1, max_col = 9, max_row = min_row_y_start + len(PDF.pdf_month_list))
 
 
         line_chart_lots_over_min.add_data(lots_over_min_y_values, titles_from_data = True)
@@ -278,8 +274,7 @@ def excel_graph_maker(ws):
 
 
         #added one more column to max_col to see if it would include the minimum values as its own series
-        inv_min_y_values = Reference(ws, min_col = 9 + i + inv_min_offset, min_row = 2, max_col = 10 + i + inv_min_offset, max_row = PDF.pdf_id + 1)
-        inv_min_offset += 1
+        inv_min_y_values = Reference(ws, min_col = 8 + (2 * i), min_row = 2, max_col = 9 + (2 * i), max_row = PDF.pdf_id + 1)
 
         #categories
         inv_min_x_values = Reference(ws, min_col = 9, min_row = 3, max_col = 9, max_row = PDF.pdf_id + 1)
@@ -294,7 +289,7 @@ def excel_graph_maker(ws):
         ws.add_chart(line_chart_inv_min, graph_inv_min_anchor)
 
         #utilizes new functions in progress
-        graph_metadata_adder(ws, graph_inv_min_anchor, i - 1)
+        #graph_metadata_adder(ws, graph_inv_min_anchor, i - 1)
 
 
         #starts drawing graphs lower on the screen instead of more horizontally
@@ -314,11 +309,21 @@ def excel_graph_maker(ws):
     line_chart_total_lots_over_min.x_axis.title = "Month"
     line_chart_total_lots_over_min.y_axis.title = "Lots Above Min"
 
-    total_lots_over_min_y_values = Reference(ws, min_col = 10, min_row = PDF.pdf_id + 4, max_col = 10 + inv_min_offset + len(PDF.pdf_media_type_list), max_row = PDF.pdf_id + len(PDF.pdf_month_list) + 4)
+    #test to add the second lots_over_min charts
+    #play around with the range
+    valid_y_data = [col_idx for col_idx in range(10, 10 + ((PDF.pdf_length) * 2), 2) if ws.cell(row = min_row_y_start, column = col_idx).value]
+    print(valid_y_data)
+    y_references = [Reference(ws, min_col=col_idx, max_col=col_idx, min_row = min_row_y_start, max_row = min_row_y_start + len(PDF.pdf_month_list)) for col_idx in valid_y_data]
+    print(y_references)
+
+    for y_ref in y_references:
+        line_chart_total_lots_over_min.add_data(y_ref, titles_from_data = True)
+
+    #total_lots_over_min_y_values = Reference(ws, min_col = 10, min_row = PDF.pdf_id + 4, max_col = 10 + inv_min_offset + len(PDF.pdf_media_type_list), max_row = PDF.pdf_id + len(PDF.pdf_month_list) + 4)
 
     total_lots_over_min_x_values = Reference(ws, min_col = 9, min_row = PDF.pdf_id + 5, max_col = 9, max_row = PDF.pdf_id + len(PDF.pdf_month_list) + 4)
 
-    line_chart_total_lots_over_min.add_data(total_lots_over_min_y_values, titles_from_data = True)
+    #line_chart_total_lots_over_min.add_data(total_lots_over_min_y_values, titles_from_data = True)
     line_chart_total_lots_over_min.set_categories(total_lots_over_min_x_values)
 
 
