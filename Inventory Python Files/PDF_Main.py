@@ -9,7 +9,7 @@ def directory_changer():
     print(os.getcwd())
 
     #manual version
-    #return os.chdir(input("Where are the inventory files stored?\n"))
+    return os.chdir(input("Where are the inventory files stored?\n"))
 
     #work version H drive
     #return os.chdir(r"P:\Public\Microbiology\Media Prep\Media Inventory\2023")
@@ -20,20 +20,22 @@ def directory_changer():
     #return os.chdir(r"C:\Users\MCN2226\Documents\inventory test")
 
     #home desktop version
-    #return os.chdir(r"C:\Users\Mason\Documents\NAMSA Test\Inventory")
+    #return os.chdir(r"C:\Users\Mason\Documents\NAMSA Test\Inventory\Inventory Files")
 
     #home laptop version
-    return os.chdir(r"C:\Users\mason\OneDrive\Documents\Python Projects\Inventory Files")
+    #return os.chdir(r"C:\Users\mason\OneDrive\Documents\Python Projects\Inventory Files")
 
 
 
-#data_scraper calls ---> smart_splitter whose product calls ---> read_ahead
+#data_scraper() calls ---> smart_splitter() whose product calls ---> read_ahead()
 
 def run_program():
+    pdf_location = directory_changer()
+    print("")
+
+    #compares the start and end time of running operations to determine how long the program took
     start_time = datetime.now().time()
     start_seconds = (start_time.hour * 60 + start_time.minute) * 60 + start_time.second
-
-    pdf_location = directory_changer()
 
     data_scraper(pdf_location)
 
@@ -46,9 +48,5 @@ def run_program():
     print("If times are unsatisfactory, move network inventory files to a local drive")
 
 run_program()
-
-#one assumption is that the first pdf is formatted ideally, since it's media types are used to format the rest of the data into cells for use in graphs
-
-#the work pc is slow due to the time needed to load each pdf from the shared storage, not due to processing times
 
 #maybe make a list of key words for the comments for clarity. EX: 'Line' should be replaced with something easily understandable that couldn't be confused with something else.
