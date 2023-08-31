@@ -55,7 +55,7 @@ class PDF:
         PDF.pdf_id += 1
 
         #useful for approximating the speed of the work pc
-        print(str(PDF.pdf_id) + " pdf's processed")
+        print(str(PDF.pdf_id - 1) + " pdf(s) processed")
 
 
     #determines the month from the filename, assuming standardized yy-mm-dd format
@@ -101,6 +101,7 @@ class PDF:
     
 
 
+    #makes a list of all the inventory data for each pdf, assuming it is stored at the end of each relevant media type line
     def inventory_list_maker(self):
         inventory_list = []
 
@@ -158,8 +159,10 @@ class PDF:
     
 
 
+    #makes a list of the lot sizes for each media type based on the lot sizes being in a certain position of each line with media on it
     def lot_size_list_maker(self):
         lot_size_list = []
+        #the first line contains the header information for each pdf, so it is ignored
         first_line = True
         for pdf_line in self.data:
 
@@ -259,7 +262,6 @@ class PDF:
                 
                 PDF.pdf_lots_over_min.append(media_monthly_inv_over_min_list)
                 
-                #test, does this reset things???????
                 inv_over_min_float_list = []
 
             
@@ -287,7 +289,6 @@ class PDF:
                     continue
             
             PDF.pdf_lots_over_min_averages.append(round((media_lots_over_min_sum / media_lots_over_min_num), 2))
-        print(":)")
 
 
 
@@ -409,16 +410,6 @@ class PDF:
 
 
 
-#one potential optimization
-#when read_ahead() reads ahead and finds that the word ahead of the phrase is not a special case, this word can still be returned to smart_splitter as phrase = read with phrase = "" bypassed and delay incremented appropriately
-#the only issue is that bypassing phrase = "" might introduce additional time in the consideration of when to do so. You could test different implementations
-
-
-
-#also might want to separate the terms PDF as the class representation and the actual pdfs you're working with
-
-
-
     #at this point each line of the data from a pdf contains functional phrases, but many pdfs are missing certain media types.
     #data_formatter() adds every media type to each pdf's data, even if no media of that type were listed on the pdf for a given date. Takes from the data processed by smart_splitter(). Only adds 400-S FTM, 1000 FTM, and DFD as well as removing OD lines because too much more would vastly overcomplicate this
     #since so much of this is hard-coded, there is the assumption that the ideal pdf will remain untouched in the future. In the event that it isn't, this is where changes would need to be made for adding new media types to each pdf's self.pdf_data
@@ -434,12 +425,6 @@ class PDF:
         sublist_count = 0
         space_offset = 1
 
-
-        #this will require a hefty re-write, but let's attempt to have every 'Media Type' column filled in with "" if nothing is listed
-
-
-        #as strange as it is, a copy of spaced_data_copy needed to be made to add to spaced_data_copy without causing an infinite loop
-        #if you update the original it updates the copy, you have to update the copy
         for sub_list in spaced_data:
             sublist_count += 1
 
@@ -493,7 +478,6 @@ class PDF:
         #runs after all the other data has been added, so that the .insert() method knows where to add 400-S FTM, 1000 FTM, and 1000 DFD based on where they would be in an ideally formatted pdf
         #the final value added, "", indicates that no media for this media type was recorded on this date
 
-        #ADDED THE FIRST QUOTATIONS
         if self.FTM_400S_Needed:
             spaced_data_copy.insert(11, ["", "400-S", "", "", "", ""])
 
