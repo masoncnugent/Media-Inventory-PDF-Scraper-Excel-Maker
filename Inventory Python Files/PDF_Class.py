@@ -125,7 +125,12 @@ class PDF:
                     inventory_list.append("")
                 
                 else:
-                    raise Exception("PDF " + str(self.filename) + " has a formatting which gave it a line without an inventory value stored at the end of it.\nThis line is " + str(pdf_line))
+                    try:
+                        #in case someone happens to input a decimal input value for inventory
+                        inventory_list.append(int(round(float(pdf_line[-1]))))
+
+                    except:
+                        raise Exception("PDF " + str(self.filename) + " has a formatting which gave it a line without an inventory value stored at the end of it.\nThis line is " + str(pdf_line))
       
             first_line = False
 
